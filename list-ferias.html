@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Funcionários em Férias</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <i class="fas fa-plane"></i>
+        <span>Funcionários em Férias</span>
+      </div>
+      <div class="nav-links">
+        <a href="dashboard.html"><i class="fas fa-arrow-left"></i> Voltar</a>
+        <button id="themeToggle" class="btn-theme"><i class="fas fa-moon"></i></button>
+      </div>
+    </div>
+
+    <div class="content">
+      <h2><i class="fas fa-calendar-alt"></i> Férias Atuais (Mês Corrente)</h2>
+      <div class="table-responsive" style="margin-top: 1rem;">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Matrícula</th>
+              <th>Frente</th>
+              <th>Início</th>
+              <th>Dias</th>
+              <th>Visualizar</th>
+            </tr>
+          </thead>
+          <tbody id="vacationTable">
+            <!-- Dados via JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="utils.js"></script>
+  <script>
+    const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+  
+  if (!currentUser) {
+    window.location.href = 'login.html';
+  }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      applySavedTheme();
+      document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+      loadCurrentVacations();
+    });
+
+    function loadCurrentVacations() {
+      const employees = JSON.parse(localStorage.getItem('employees')) || [];
+      const tbody = document.getElementById('vacationTable');
+      tbody.innerHTML = '';
+
+      const now = new Date();
+      const month = now.getMonth();
+      const year = now.getFullYear();
+
+      const current = employees.filter(emp => {
+        if (!emp.onVacation || !emp.vacationStartDate) return false;
+        const start = new Date(emp.vacationStartDate);
+        return start.getMonth() === month && start.getFullYear() === year;
+      });
+
+      current.forEach(emp => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${emp.name}</td>
+          <td>${emp.matricula}</td>
+          <td>${emp.team}</td>
+          <td>${formatDate(emp.vacationStartDate)}</td>
+          <td>${emp.totalVacationDays} dias</td>
+          <td><a href="profile.html?id=${emp.id}" class="btn-view"><i class="fas fa-eye"></i> Ver</a></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+  </script>
+</body>
+</html>

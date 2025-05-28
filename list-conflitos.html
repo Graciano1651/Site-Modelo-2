@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Conflitos de Férias</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span>Conflitos de Férias</span>
+      </div>
+      <div class="nav-links">
+        <a href="dashboard.html"><i class="fas fa-arrow-left"></i> Voltar</a>
+        <button id="themeToggle" class="btn-theme"><i class="fas fa-moon"></i></button>
+      </div>
+    </div>
+
+    <div class="content">
+      <h2><i class="fas fa-user-friends"></i> Equipes com Conflitos</h2>
+      <div id="conflictContainer"></div>
+    </div>
+  </div>
+
+  <script src="utils.js"></script>
+  <script src="https://protect.checkpoint.com/v2/r02/___https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+    const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+  
+  if (!currentUser) {
+    window.location.href = 'login.html';
+  }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      applySavedTheme();
+      document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+      loadConflicts();
+    });
+
+    function loadConflicts() {
+      const employees = JSON.parse(localStorage.getItem('employees')) || [];
+      const grouped = {};
+
+      employees.forEach(emp => {
+        if (emp.onVacation) {
+          if (!grouped[emp.team]) grouped[emp.team] = [];
+          grouped[emp.team].push(emp);
+        }
+      });
+
+      const container = document.getElementById('conflictContainer');
+      container.innerHTML = '';
+
+      Object.entries(grouped).forEach(([team, emps]) => {
+        if (emps.length <= 1) return;
+
+        const section = document.createElement('div');
+        section.className = 'team-section';
+        section.innerHTML = `<h3><i class="fas fa-users"></i> Frente ${team}</h3>`;
+
+        emps.forEach(emp => {
+          const card = document.createElement('div');
+          card.className = 'employee-card';
+          card.innerHTML = `
+            <div class="employee-photo">
+              ${emp.photo ? `<img src="${emp.photo}" alt="${emp.name}">` : '<i class="fas fa-user"></i>'}
+            </div>
+            <div class="employee-info">
+              <h3 class="employee-name">${emp.name}</h3>
+              <p><strong>Matrícula:</strong> ${emp.matricula}</p>
+              <p><strong>Início das Férias:</strong> ${formatDate(emp.vacationStartDate)}</p>
+              <p><strong>Dias:</strong> ${emp.totalVacationDays}</p>
+              <a class="btn-view" href="profile.html?id=${emp.id}"><i class="fas fa-eye"></i> Ver</a>
+              <button class="btn btn-secondary" onclick="resolverConflito('${emp.id}', '${team}')">
+                <i class="fas fa-retweet"></i> Remanejar
+              </button>
+            </div>
+          `;
+          section.appendChild(card);
+        });
+
+        container.appendChild(section);
+      });
+
+      if (!container.hasChildNodes()) {
+        container.innerHTML = `<p><i class="fas fa-check-circle"></i> Nenhum conflito detectado.</p>`;
+      }
+    }
+
+    function resolverConflito(id, team) {
+      Swal.fire({
+        title: 'Remanejar férias?',
+        html: 'Deseja remarcar as férias desse funcionário?<br><small>Você poderá escolher uma nova data.</small>',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sim, remanejar',
+        cancelButtonText: 'Cancelar'
+      }).then(result => {
+        if (result.isConfirmed) {
+          const newDate = prompt('Nova data de início (AAAA-MM-DD):');
+          if (!newDate || isNaN(new Date(newDate))) {
+            Swal.fire('Data inválida', 'Por favor, insira uma data válida.', 'error');
+            return;
+          }
+
+          const employees = JSON.parse(localStorage.getItem('employees')) || [];
+          const index = employees.findIndex(e => e.id === id);
+          if (index !== -1) {
+            employees[index].vacationStartDate = newDate;
+            localStorage.setItem('employees', JSON.stringify(employees));
+            Swal.fire('Sucesso!', 'Férias remanejadas com sucesso.', 'success').then(loadConflicts);
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>
