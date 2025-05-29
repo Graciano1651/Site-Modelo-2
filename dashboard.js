@@ -1,6 +1,6 @@
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', async function () {
   const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-
+  
   if (!currentUser) {
     window.location.href = 'login.html';
     return;
@@ -17,29 +17,38 @@ document.addEventListener('DOMContentLoaded', function () {
 
   applySavedTheme();
   document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-  loadDashboard();
+  
+  await loadDashboard();
   setInterval(loadDashboard, 60000);
 });
 
-function loadDashboard() {
-  const employees = JSON.parse(localStorage.getItem('employees')) || [];
+async function loadDashboard() {
   const today = new Date();
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
 
+  // Buscar todos os funcionários
+  const { data: employees, error } = await supabase.from('employees').select('*');
+
+  if (error) {
+    console.error('Erro ao carregar funcionários:', error);
+    return;
+  }
+
+  // Filtrar funcionários em férias no mês atual
   const onVacation = employees.filter(e => {
-    if (!e.onVacation || !e.vacationStartDate) return false;
-    const start = new Date(e.vacationStartDate);
+    if (!e.on_vacation || !e.vacation_start_date) return false;
+    const start = new Date(e.vacation_start_date);
     return start.getMonth() === currentMonth && start.getFullYear() === currentYear;
   });
 
+  // Filtrar funcionários com férias disponíveis
   const available = employees.filter(e => {
-    if (e.onVacation) return false;
-    const refDate = e.lastVacation ? new Date(e.lastVacation) : new Date(e.hireDate);
-    const monthsDiff = (today.getFullYear() - refDate.getFullYear()) * 12 + (today.getMonth() - refDate.getMonth());
-    return monthsDiff >= 12;
+    if (e.on_vacation) return false;
+    return calcDisponibilidade(e.hire_date, e.last_vacation);
   });
 
+  // Verificar conflitos por equipe
   const teams = {};
   onVacation.forEach(emp => {
     if (!teams[emp.team]) teams[emp.team] = [];
@@ -53,6 +62,7 @@ function loadDashboard() {
     }
   }
 
+  // Atualizar UI
   document.getElementById('totalEmployees').textContent = employees.length;
   document.getElementById('onVacation').textContent = onVacation.length;
   document.getElementById('availableVacation').textContent = available.length;

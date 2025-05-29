@@ -28,11 +28,19 @@ function toggleTheme() {
   document.body.classList.toggle('dark-mode');
   const isDark = document.body.classList.contains('dark-mode');
   localStorage.setItem('theme', isDark ? 'dark' : 'light');
-  document.getElementById('themeToggle').innerHTML = `<i class="fas fa-${isDark ? 'sun' : 'moon'}"></i>`;
+  document.getElementById('themeToggle').innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
 }
 
 function applySavedTheme() {
   const theme = localStorage.getItem('theme') || 'light';
   if (theme === 'dark') document.body.classList.add('dark-mode');
-  toggleTheme(); toggleTheme(); // Corrige ícone
+  document.getElementById('themeToggle').innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+}
+
+// Nova função para calcular disponibilidade de férias
+function calcDisponibilidade(hireDate, lastVacation) {
+  const ref = lastVacation ? new Date(lastVacation) : new Date(hireDate);
+  const now = new Date();
+  const months = (now.getFullYear() - ref.getFullYear()) * 12 + (now.getMonth() - ref.getMonth());
+  return months >= 12;
 }

@@ -1,41 +1,35 @@
-document.addEventListener('DOMContentLoaded', () => {
-  // 1. Primeiro verifique se os elementos existem
-  const themeToggle = document.getElementById('themeToggle');
-  const loginForm = document.getElementById('loginForm');
+document.addEventListener('DOMContentLoaded', async () => {
+  applySavedTheme();
+  document.getElementById('themeToggle').addEventListener('click', toggleTheme);
   
-  if (!themeToggle || !loginForm) {
-    console.error('Elementos essenciais não encontrados na página!');
-    return;
-  }
-
-  // 2. Aplicar tema salvo de forma segura
-  const applyTheme = () => {
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    document.body.classList.toggle('dark-mode', savedTheme === 'dark');
-    themeToggle.innerHTML = `<i class="fas fa-${savedTheme === 'dark' ? 'sun' : 'moon'}"></i>`;
-  };
-
-  // 3. Configurar tema inicial
-  applyTheme();
-
-  // 4. Verificar usuário logado
-  const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-  if (currentUser) {
+  // Verificar se já está logado
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
     window.location.href = 'dashboard.html';
     return;
   }
 
-  // 5. Criar usuário admin padrão
-  if (!localStorage.getItem('users')) {
-    localStorage.setItem('users', JSON.stringify([{
-      username: 'admin',
-      password: 'admin123',
-      isAdmin: true
-    }]));
+  // Criar usuário admin padrão se não existir
+  const { data: adminUser, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('username', 'admin')
+    .single();
+
+  if (!adminUser && !error) {
+    const { data, error } = await supabase
+      .from('users')
+      .insert([
+        { 
+          username: 'admin',
+          password: 'admin123', // Na prática, usaríamos hash
+          is_admin: true 
+        }
+      ]);
   }
 
-  // 6. Configurar evento de login
-  loginForm.addEventListener('submit', function(e) {
+  // Configurar evento de login
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const username = document.getElementById('username').value.trim();
@@ -46,26 +40,26 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const users = JSON.parse(localStorage.getItem('users')) || [];
-    const user = users.find(u => 
-      u.username.toLowerCase() === username.toLowerCase() && 
-      u.password === password
-    );
+    // Verificar credenciais
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('username', username)
+      .eq('password', password) // Na prática, usaríamos auth do Supabase
+      .single();
 
     if (user) {
-      sessionStorage.setItem('currentUser', JSON.stringify(user));
+      // Armazenar informações do usuário na sessionStorage
+      sessionStorage.setItem('currentUser', JSON.stringify({
+        id: user.id,
+        username: user.username,
+        isAdmin: user.is_admin
+      }));
+      
       window.location.href = 'dashboard.html';
     } else {
       alert('Credenciais inválidas! Tente novamente.');
       document.getElementById('password').value = '';
     }
-  });
-
-  // 7. Configurar botão de tema (com verificação)
-  themeToggle.addEventListener('click', function() {
-    document.body.classList.toggle('dark-mode');
-    const isDark = document.body.classList.contains('dark-mode');
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    this.innerHTML = `<i class="fas fa-${isDark ? 'sun' : 'moon'}"></i>`;
   });
 });
