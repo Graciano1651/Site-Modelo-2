@@ -1,46 +1,49 @@
-function formatDate(dateString) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('pt-BR');
+export function formatDateBR(dateStr) {
+  const date = new Date(dateStr);
+  const dia = String(date.getDate()).padStart(2, '0');
+  const mes = String(date.getMonth() + 1).padStart(2, '0');
+  const ano = date.getFullYear();
+  return `${dia}/${mes}/${ano}`;
 }
 
-function formatStatus(status) {
-  const map = {
-    'staff': 'Staff',
-    'operacional': 'Operacional',
-    'aprendiz': 'Aprendiz',
-    'suspenso': 'Suspenso'
-  };
-  return map[status] || status;
+// Função para formatar data no padrão ISO (aaaa-mm-dd)
+export function formatDateISO(dateStr) {
+  const date = new Date(dateStr);
+  return date.toISOString().split('T')[0];
 }
 
-function getStatusBadgeClass(status) {
-  switch (status) {
-    case 'staff': return 'badge-primary';
-    case 'operacional': return 'badge-info';
-    case 'aprendiz': return 'badge-warning';
-    case 'suspenso': return 'badge-danger';
-    default: return 'badge-secondary';
+// Calcular dias restantes de férias
+export function calcularDiasFaltantes(dataFim) {
+  const hoje = new Date();
+  const fim = new Date(dataFim);
+  const diff = fim - hoje;
+
+  if (diff < 0) return 0;
+
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
+// Verificar se duas datas se sobrepõem
+export function periodosSobrepostos(inicio1, fim1, inicio2, fim2) {
+  return !(new Date(fim1) < new Date(inicio2) || new Date(inicio1) > new Date(fim2));
+}
+
+// Retorna true se a data fornecida está dentro do mês atual
+export function estaNoMesAtual(dataStr) {
+  const hoje = new Date();
+  const data = new Date(dataStr);
+  return (
+    data.getFullYear() === hoje.getFullYear() &&
+    data.getMonth() === hoje.getMonth()
+  );
+}
+
+// Gera um ID aleatório (usado somente em situações não críticas)
+export function gerarIdAleatorio(tamanho = 8) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let id = '';
+  for (let i = 0; i < tamanho; i++) {
+    id += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-}
-
-function toggleTheme() {
-  document.body.classList.toggle('dark-mode');
-  const isDark = document.body.classList.contains('dark-mode');
-  localStorage.setItem('theme', isDark ? 'dark' : 'light');
-  document.getElementById('themeToggle').innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-}
-
-function applySavedTheme() {
-  const theme = localStorage.getItem('theme') || 'light';
-  if (theme === 'dark') document.body.classList.add('dark-mode');
-  document.getElementById('themeToggle').innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-}
-
-// Nova função para calcular disponibilidade de férias
-function calcDisponibilidade(hireDate, lastVacation) {
-  const ref = lastVacation ? new Date(lastVacation) : new Date(hireDate);
-  const now = new Date();
-  const months = (now.getFullYear() - ref.getFullYear()) * 12 + (now.getMonth() - ref.getMonth());
-  return months >= 12;
+  return id;
 }

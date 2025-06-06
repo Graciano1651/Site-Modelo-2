@@ -1,11 +1,14 @@
 <!DOCTYPE html><html lang="pt-BR">
 <head>
+  <script src="supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  const supabaseUrl = 'https://kqvhbcbjrkyfknegnbce.supabase.co';
-  const supabaseKey = 'SUA_CHAVE_ANONIMA_AQUI';
-  const supabase = supabase.createClient(supabaseUrl, supabaseKey);
-</script>
+  <script>
+    // Inicialização do Supabase
+    document.supabase = supabase.createClient(
+      'https://kqvhbcbjrkyfknegnbce.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxdmhiY2Jqcmt5ZmtuZWduYmNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0NTg0NjUsImV4cCI6MjA2NDAzNDQ2NX0.6fHcOtVH59DVJ3J2KF19phtiCriAsHDr5vWLnxwW8kY' // Substitua pela sua chave
+    );
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Perfil do Funcionário</title>
