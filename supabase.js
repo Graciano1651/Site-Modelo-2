@@ -1,6 +1,6 @@
-import { createClient } from 'https://protect.checkpoint.com/v2/r02/___https://cdn.jsdelivr.net/npm/_@supabase/supabase-js/+esm___.YzJlOnRlbGVmb25pY2FicmF6aWw6YzpvOjQ4YmJhOWJjNWE4ZjA3Yjc3NGI3YjIzNWNkNDk0OWUwOjc6MjFiNTo0NmMwMjVhNWMyZDZlNTIyZmZjYzY0ZmZmMTBjNDBmMjg3ZDE0ZGQwZmU2NDU1YmM1MDVlMjAyZGRiNTg4YWI2OnQ6VDpG';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/_@supabase/supabase-js/+esm';
 
-const SUPABASE_URL = 'https://protect.checkpoint.com/v2/r02/___https://kqvhbcbjrkyfknegnbce.supabase.co___.YzJlOnRlbGVmb25pY2FicmF6aWw6YzpvOjQ4YmJhOWJjNWE4ZjA3Yjc3NGI3YjIzNWNkNDk0OWUwOjc6NWE4Yzo5MDU1NDBkOWEzNGZhN2M5ZDk3ZWViYzM2NjE1MGFiMDExYzg2YjY5NmE1YWNlZjA5YWE5MDNhYmNlMjk0ODJlOnQ6VDpG';
+const SUPABASE_URL = 'https://kqvhbcbjrkyfknegnbce.supabase.co' ;
 const SUPABASE_ANON_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxdmhiY2Jqcmt5ZmtuZWduYmNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0NTg0NjUsImV4cCI6MjA2NDAzNDQ2NX0.6fHcOtVH59DVJ3J2KF19phtiCriAsHDr5vWLnxwW8kY';
 
