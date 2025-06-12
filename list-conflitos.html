@@ -1,13 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <script src="supabase.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  const supabaseUrl = 'https://kqvhbcbjrkyfknegnbce.supabase.co';
-  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxdmhiY2Jqcmt5ZmtuZWduYmNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0NTg0NjUsImV4cCI6MjA2NDAzNDQ2NX0.6fHcOtVH59DVJ3J2KF19phtiCriAsHDr5vWLnxwW8kY';
-  const supabase = supabase.createClient(supabaseUrl, supabaseKey);
-</script>
+<script src="supabase.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Conflitos de Férias</title>
@@ -34,29 +28,35 @@
   </div>
 
   <script src="utils.js"></script>
-  <script src="https://protect.checkpoint.com/v2/r02/___https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://protect.checkpoint.com/v2/r02/___https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>___.YzJlOnRlbGVmb25pY2FicmF6aWw6YzpvOjA2YjgyN2VmYmExYTA2YTViNmNlNzNiNjA0YWU4NjA2Ojc6M2M2NDozZmVmMTY1NTc2YWE4YmZkOTcyMWMzOWNlMTE2ZTFlOWQ3ZWNhNjljNzY1OGM2ZGQ2M2M4ZDgyMTFiNzkzODcxOnQ6VDpG;
   <script>
     const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-  
-  if (!currentUser) {
-    window.location.href = 'login.html';
-  }
+    
+    if (!currentUser) {
+      window.location.href = 'login.html';
+    }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       applySavedTheme();
       document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-      loadConflicts();
+      await loadConflicts();
     });
 
-    function loadConflicts() {
-      const employees = JSON.parse(localStorage.getItem('employees')) || [];
-      const grouped = {};
+    async function loadConflicts() {
+      const { data: employees, error } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('on_vacation', true);
 
+      if (error) {
+        console.error('Erro ao carregar:', error);
+        return;
+      }
+
+      const grouped = {};
       employees.forEach(emp => {
-        if (emp.onVacation) {
-          if (!grouped[emp.team]) grouped[emp.team] = [];
-          grouped[emp.team].push(emp);
-        }
+        if (!grouped[emp.team]) grouped[emp.team] = [];
+        grouped[emp.team].push(emp);
       });
 
       const container = document.getElementById('conflictContainer');
@@ -79,8 +79,8 @@
             <div class="employee-info">
               <h3 class="employee-name">${emp.name}</h3>
               <p><strong>Matrícula:</strong> ${emp.matricula}</p>
-              <p><strong>Início das Férias:</strong> ${formatDate(emp.vacationStartDate)}</p>
-              <p><strong>Dias:</strong> ${emp.totalVacationDays}</p>
+              <p><strong>Início das Férias:</strong> ${formatDate(emp.vacation_start_date)}</p>
+              <p><strong>Dias:</strong> ${emp.total_vacation_days}</p>
               <a class="btn-view" href="profile.html?id=${emp.id}"><i class="fas fa-eye"></i> Ver</a>
               <button class="btn btn-secondary" onclick="resolverConflito('${emp.id}', '${team}')">
                 <i class="fas fa-retweet"></i> Remanejar
@@ -89,7 +89,6 @@
           `;
           section.appendChild(card);
         });
-
         container.appendChild(section);
       });
 
@@ -98,32 +97,37 @@
       }
     }
 
-    function resolverConflito(id, team) {
-      Swal.fire({
+    async function resolverConflito(id, team) {
+      const { value: newDate } = await Swal.fire({
         title: 'Remanejar férias?',
-        html: 'Deseja remarcar as férias desse funcionário?<br><small>Você poderá escolher uma nova data.</small>',
-        icon: 'question',
+        html: 'Digite a nova data de início (AAAA-MM-DD):',
+        input: 'text',
+        inputPlaceholder: '2023-12-01',
         showCancelButton: true,
-        confirmButtonText: 'Sim, remanejar',
-        cancelButtonText: 'Cancelar'
-      }).then(result => {
-        if (result.isConfirmed) {
-          const newDate = prompt('Nova data de início (AAAA-MM-DD):');
-          if (!newDate || isNaN(new Date(newDate))) {
-            Swal.fire('Data inválida', 'Por favor, insira uma data válida.', 'error');
-            return;
-          }
-
-          const employees = JSON.parse(localStorage.getItem('employees')) || [];
-          const index = employees.findIndex(e => e.id === id);
-          if (index !== -1) {
-            employees[index].vacationStartDate = newDate;
-            localStorage.setItem('employees', JSON.stringify(employees));
-            Swal.fire('Sucesso!', 'Férias remanejadas com sucesso.', 'success').then(loadConflicts);
+        confirmButtonText: 'Confirmar',
+        cancelButtonText: 'Cancelar',
+        inputValidator: (value) => {
+          if (!value || !Date.parse(value)) {
+            return 'Data inválida!';
           }
         }
       });
+
+      if (newDate) {
+        const { error } = await supabase
+          .from('employees')
+          .update({ vacation_start_date: newDate })
+          .eq('id', id);
+
+        if (error) {
+          Swal.fire('Erro!', 'Não foi possível atualizar.', 'error');
+        } else {
+          Swal.fire('Sucesso!', 'Férias remanejadas.', 'success');
+          await loadConflicts();
+        }
+      }
     }
   </script>
 </body>
 </html>
+

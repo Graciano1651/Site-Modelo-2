@@ -1,19 +1,13 @@
-<!DOCTYPE html><html lang="pt-BR">
+<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
+  <script src="https://protect.checkpoint.com/v2/r02/___https://cdn.jsdelivr.net/npm/_@supabase/supabase-js@2"></script>___.YzJlOnRlbGVmb25pY2FicmF6aWw6YzpvOjZiNzJhNWJkOTlmYjMyZTZiNzliN2Q0NzY0YTUwZDVlOjc6NWJkNzpjZmQ1NmU0OWFkMzcxODNmMDUzYTQzMzUyNWYzMGIxMmU0NDE0YWNlNGYxOWYyNDY2Y2Q3OTZhZmE1MDU1MjcxOnQ6VDpG;
   <script src="supabase.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    // Inicialização do Supabase
-    document.supabase = supabase.createClient(
-      'https://kqvhbcbjrkyfknegnbce.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxdmhiY2Jqcmt5ZmtuZWduYmNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0NTg0NjUsImV4cCI6MjA2NDAzNDQ2NX0.6fHcOtVH59DVJ3J2KF19phtiCriAsHDr5vWLnxwW8kY' // Substitua pela sua chave
-    );
-  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Perfil do Funcionário</title>
   <link rel="stylesheet" href="./style.css">
-  <link rel="stylesheet" href="https://protect.checkpoint.com/v2/r02/___https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://protect.checkpoint.com/v2/r02/___https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">___.YzJlOnRlbGVmb25pY2FicmF6aWw6YzpvOjZiNzJhNWJkOTlmYjMyZTZiNzliN2Q0NzY0YTUwZDVlOjc6NzQ1OTo3OWRiMzUwZWU2NWMzYjMyMGJiY2UwNTgwMjlhNTllNmU1YmMzYWRjZjhkNDg0YzNjZGVkOTY4ZDQzMGM4OGE1OnQ6VDpG;
 </head>
 <body>
   <div class="container">
@@ -34,17 +28,21 @@
       </div>
       <div id="profileContent" class="profile-animation"></div>
     </div>
-  </div> <script src="utils.js"></script> <script>
-    const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-  
-  if (!currentUser) {
-    window.location.href = 'login.html';
-  }
+  </div>
 
-    document.addEventListener('DOMContentLoaded', () => {
+  <script src="utils.js"></script>
+  <script>
+    const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+    
+    if (!currentUser) {
+      window.location.href = 'login.html';
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
       applySavedTheme();
       document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-      renderProfile();
+      await renderProfile();
+      
       document.getElementById('editBtn').addEventListener('click', () => {
         const id = new URLSearchParams(window.location.search).get("id");
         localStorage.setItem('editEmployeeId', id);
@@ -52,28 +50,48 @@
       });
     });
 
-    function renderProfile() {
+    async function renderProfile() {
       const id = new URLSearchParams(window.location.search).get("id");
-      const employees = JSON.parse(localStorage.getItem("employees")) || [];
-      const emp = employees.find(e => e.id === id);
-      const container = document.getElementById('profileContent');
-      if (!emp) {
-        container.innerHTML = `<p>Funcionário não encontrado.</p>`;
+      if (!id) {
+        document.getElementById('profileContent').innerHTML = '<p>ID do funcionário não especificado.</p>';
         return;
       }
 
-      const status = emp.onVacation ? "Em Férias" : (calcDisponibilidade(emp) ? "Férias Disponíveis" : "Indisponível");
+      // Buscar dados do funcionário e períodos de férias
+      const { data: emp, error: empError } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      const { data: periods, error: periodsError } = await supabase
+        .from('vacation_periods')
+        .select('*')
+        .eq('employee_id', id)
+        .order('start_date', { ascending: true });
+
+      if (empError || !emp) {
+        document.getElementById('profileContent').innerHTML = '<p>Funcionário não encontrado.</p>';
+        return;
+      }
+
+      const status = emp.on_vacation ? "Em Férias" : calcDisponibilidade(emp.hire_date, emp.last_vacation) ? "Disponível" : "Indisponível";
       const today = new Date();
-      const activePeriod = emp.vacationPeriods?.find(p => {
-        const start = new Date(p.date);
-        const end = new Date(start);
-        end.setDate(start.getDate() + p.days);
-        return today >= start && today <= end;
-      });
+      
+      // Encontrar período ativo de férias
+      let activePeriod = null;
+      if (periods && !periodsError) {
+        activePeriod = periods.find(p => {
+          const start = new Date(p.start_date);
+          const end = new Date(start);
+          end.setDate(start.getDate() + p.days);
+          return today >= start && today <= end;
+        });
+      }
 
       let progressHTML = '';
       if (activePeriod) {
-        const start = new Date(activePeriod.date);
+        const start = new Date(activePeriod.start_date);
         const end = new Date(start);
         end.setDate(start.getDate() + activePeriod.days);
         const daysPassed = Math.floor((today - start) / 86400000) + 1;
@@ -105,7 +123,24 @@
           </div>`;
       }
 
-      container.innerHTML = `
+      // Gerar histórico de férias
+      let historyHTML = `
+        <div class="timeline-item">
+          <div class="timeline-date">${formatDate(emp.hire_date)}</div>
+          <div class="timeline-content">Contratação</div>
+        </div>`;
+
+      if (periods && !periodsError) {
+        historyHTML += periods.map(p => `
+          <div class="timeline-item">
+            <div class="timeline-date">${formatDate(p.start_date)}</div>
+            <div class="timeline-content">${p.days} dias de férias</div>
+          </div>
+        `).join('');
+      }
+
+      // Montar o HTML completo
+      document.getElementById('profileContent').innerHTML = `
         <div class="profile-header">
           <div class="profile-photo">
             ${emp.photo ? `<img src="${emp.photo}" alt="${emp.name}">` : '<i class="fas fa-user"></i>'}
@@ -118,7 +153,7 @@
               <div class="detail-item"><i class="fas fa-users"></i> Frente ${emp.team}</div>
               <div class="detail-item">
                 <i class="fas fa-clock"></i>
-                <span class="badge ${emp.onVacation ? 'badge-success' : (calcDisponibilidade(emp) ? 'badge-primary' : 'badge-warning')}">${status}</span>
+                <span class="badge ${emp.on_vacation ? 'badge-success' : (calcDisponibilidade(emp.hire_date, emp.last_vacation) ? 'badge-primary' : 'badge-warning')}">${status}</span>
               </div>
             </div>
           </div>
@@ -128,35 +163,20 @@
           <div class="card">
             <h2><i class="fas fa-info-circle"></i> Informações Pessoais</h2>
             <div class="info-item"><label>Telefone</label><p>${emp.phone || 'Não informado'}</p></div>
-            <div class="info-item"><label>Data de Contratação</label><p>${formatDate(emp.hireDate)}</p></div>
-            <div class="info-item"><label>Últimas Férias</label><p>${emp.lastVacation ? formatDate(emp.lastVacation) : 'Nunca tirou férias'}</p></div>
+            <div class="info-item"><label>Data de Contratação</label><p>${formatDate(emp.hire_date)}</p></div>
+            <div class="info-item"><label>Últimas Férias</label><p>${emp.last_vacation ? formatDate(emp.last_vacation) : 'Nunca tirou férias'}</p></div>
           </div>
 
           <div class="card">
             ${progressHTML}
             <h2 style="margin-top: 2rem;"><i class="fas fa-history"></i> Histórico</h2>
             <div class="timeline">
-              <div class="timeline-item">
-                <div class="timeline-date">${formatDate(emp.hireDate)}</div>
-                <div class="timeline-content">Contratação</div>
-              </div>
-              ${emp.vacationPeriods?.map(v => `
-                <div class="timeline-item">
-                  <div class="timeline-date">${formatDate(v.date)}</div>
-                  <div class="timeline-content">${v.days} dias de férias</div>
-                </div>
-              `).join('') || ''}
+              ${historyHTML}
             </div>
           </div>
         </div>
       `;
     }
-
-    function calcDisponibilidade(emp) {
-      const ref = emp.lastVacation ? new Date(emp.lastVacation) : new Date(emp.hireDate);
-      const now = new Date();
-      const months = (now.getFullYear() - ref.getFullYear()) * 12 + (now.getMonth() - ref.getMonth());
-      return months >= 12;
-    }
-  </script></body>
+  </script>
+</body>
 </html>

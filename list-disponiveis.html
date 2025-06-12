@@ -1,13 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <script src="supabase.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  const supabaseUrl = 'https://kqvhbcbjrkyfknegnbce.supabase.co';
-  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxdmhiY2Jqcmt5ZmtuZWduYmNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0NTg0NjUsImV4cCI6MjA2NDAzNDQ2NX0.6fHcOtVH59DVJ3J2KF19phtiCriAsHDr5vWLnxwW8kY';
-  const supabase = supabase.createClient(supabaseUrl, supabaseKey);
-</script>
+<script src="supabase.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Férias Disponíveis</title>
@@ -53,27 +47,34 @@
   <script src="utils.js"></script>
   <script>
     const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-  
-  if (!currentUser) {
-    window.location.href = 'login.html';
-  }
+    
+    if (!currentUser) {
+      window.location.href = 'login.html';
+    }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       applySavedTheme();
       document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-      loadAvailableEmployees();
+      await loadAvailableEmployees();
     });
 
-    function loadAvailableEmployees() {
-      const employees = JSON.parse(localStorage.getItem('employees')) || [];
+    async function loadAvailableEmployees() {
+      const { data: employees, error } = await supabase.from('employees').select('*');
+      
+      if (error) {
+        console.error('Erro ao carregar:', error);
+        return;
+      }
+
       const tbody = document.getElementById('availableTable');
       tbody.innerHTML = '';
 
       const now = new Date();
       const available = employees.filter(emp => {
-        if (emp.onVacation) return false;
-        const refDate = emp.lastVacation ? new Date(emp.lastVacation) : new Date(emp.hireDate);
-        const months = (now.getFullYear() - refDate.getFullYear()) * 12 + (now.getMonth() - refDate.getMonth());
+        if (emp.on_vacation) return false;
+        const refDate = emp.last_vacation ? new Date(emp.last_vacation) : new Date(emp.hire_date);
+        const months = (now.getFullYear() - refDate.getFullYear()) * 12 + 
+                      (now.getMonth() - refDate.getMonth());
         return months >= 12;
       });
 
@@ -84,8 +85,8 @@
           <td>${emp.matricula}</td>
           <td>${formatStatus(emp.status)}</td>
           <td>${emp.team}</td>
-          <td>${formatDate(emp.hireDate)}</td>
-          <td>${emp.lastVacation ? formatDate(emp.lastVacation) : 'N/A'}</td>
+          <td>${formatDate(emp.hire_date)}</td>
+          <td>${emp.last_vacation ? formatDate(emp.last_vacation) : 'N/A'}</td>
           <td><a href="profile.html?id=${emp.id}" class="btn-view"><i class="fas fa-eye"></i> Ver</a></td>
         `;
         tbody.appendChild(tr);
@@ -94,3 +95,4 @@
   </script>
 </body>
 </html>
+
