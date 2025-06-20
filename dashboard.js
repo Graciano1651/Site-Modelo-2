@@ -40,7 +40,7 @@ async function carregarDashboard() {
 
     // Clique para redirecionamento
     document.getElementById('blocoTotal').onclick = () => {
-      window.location.href = 'index.html';
+      window.location.href = 'cadastro.html';
     };
     document.getElementById('blocoFerias').onclick = () => {
       window.location.href = 'list-em-ferias.html';

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<script src="supabase.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cadastro de Funcionários</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <i class="fas fa-umbrella-beach"></i>
+        <span>Cadastro Férias</span>
+      </div>
+      <div class="nav-links">
+        <a href="cadastro.html"><i class="fas fa-user-plus"></i> Cadastro</a>
+        <a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        <button id="themeToggle" class="btn-theme"><i class="fas fa-moon"></i></button>
+      </div>
+
+    </div>
+
+    <div class="content">
+      <h1><i class="fas fa-user-edit"></i> Cadastro de Funcionário</h1>
+
+      <form id="employeeForm" class="form-grid">
+        <input type="hidden" id="employeeId"/>
+
+        <div class="form-group">
+          <label for="name"><i class="fas fa-user"></i> Nome Completo</label>
+          <input type="text" id="name" class="form-control" required />
+        </div>
+
+        <div class="form-group">
+          <label for="matricula"><i class="fas fa-id-card"></i> Matrícula</label>
+          <input type="text" id="matricula" class="form-control" required />
+        </div>
+
+        <div class="form-group">
+          <label for="phone"><i class="fas fa-phone"></i> Telefone</label>
+          <input type="tel" id="phone" class="form-control" required />
+        </div>
+
+        <div class="form-group">
+          <label for="hireDate"><i class="fas fa-calendar-alt"></i> Data de Contratação</label>
+          <input type="date" id="hireDate" class="form-control" required />
+        </div>
+
+        <div class="form-group">
+          <label for="status"><i class="fas fa-user-tag"></i> Status</label>
+          <select id="status" class="form-control" required>
+            <option value="">Selecione...</option>
+            <option value="staff">Staff</option>
+            <option value="operacional">Operacional</option>
+            <option value="aprendiz">Aprendiz</option>
+            <option value="suspenso">Suspenso</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="team"><i class="fas fa-users"></i> Frente de Trabalho</label>
+          <select id="team" class="form-control" required>
+            <option value="">Selecione...</option>
+            <option value="A">Frente A</option>
+            <option value="B">Frente B</option>
+            <option value="C">Frente C</option>
+            <option value="D">Frente D</option>
+          </select>
+        </div>
+
+        <div class="photo-upload">
+          <div class="photo-preview" id="photoPreview">
+            <i class="fas fa-user"></i>
+          </div>
+          <button type="button" class="btn-upload" id="uploadBtn">
+            <i class="fas fa-camera"></i> Adicionar Foto
+          </button>
+          <input type="file" id="photoInput" accept="image/*" style="display: none" />
+        </div>
+
+        <div class="form-group">
+          <label for="lastVacation"><i class="fas fa-plane"></i> Últimas Férias</label>
+          <input type="date" id="lastVacation" class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label><i class="fas fa-clock"></i> Férias a Vencer</label>
+          <div id="vacationCounter" class="status-indicator pending">
+            <i class="fas fa-hourglass-half"></i> Calculo automático após cadastro
+          </div>
+        </div>
+
+        <div class="form-group" style="grid-column: span 2;">
+          <label><i class="fas fa-calendar-check"></i> Período de Férias (máx 30 dias)</label>
+          <div class="vacation-days">
+            <div>
+              <input type="number" id="vacationDay1" class="form-control" placeholder="Dias" min="0" max="30" />
+              <input type="date" id="vacationDate1" class="form-control" placeholder="Data" />
+            </div>
+            <div>
+              <input type="number" id="vacationDay2" class="form-control" placeholder="Dias" min="0" max="30" />
+              <input type="date" id="vacationDate2" class="form-control" placeholder="Data" />
+            </div>
+            <div>
+              <input type="number" id="vacationDay3" class="form-control" placeholder="Dias" min="0" max="30" />
+              <input type="date" id="vacationDate3" class="form-control" placeholder="Data" />
+            </div>
+          </div>
+          <div id="totalDays" style="text-align: right; margin-top: 0.5rem; font-weight: 500;">
+            <i class="fas fa-calculator"></i> Total: <span>0</span> dias
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn btn-secondary" id="clearBtn">
+            <i class="fas fa-broom"></i> Limpar
+          </button>
+          <button type="button" class="btn btn-primary" id="saveButton">
+            <i class="fas fa-save"></i> Salvar Funcionário
+          </button>
+          <button type="button" class="btn btn-export" id="exportExcel">
+            <i class="fas fa-file-excel"></i> Exportar Excel
+          </button>
+        </div>
+        <button type="button" class="btn btn-primary" id="newUserBtn" style="display: none;">
+  <i class="fas fa-user-plus"></i> Novo Usuário
+</button>
+
+        <div class="employee-list">
+          <h2><i class="fas fa-users"></i> Funcionários Cadastrados</h2>
+          <input type="text" id="searchInput" placeholder="Buscar por nome ou matrícula" class="form-control" />
+          <div class="table-responsive">
+            <table id="employeesTable">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Matrícula</th>
+                  <th>Status</th>
+                  <th>Frente</th>
+                  <th>Férias</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="employeesList">
+                <!-- Lista dinâmica -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+<div id="userModal" class="modal">
+  <div class="modal-content">
+    <span class="close">&times;</span>
+    <h2><i class="fas fa-user-plus"></i> Cadastrar Novo Usuário</h2>
+    <form id="userForm">
+      <div class="form-group">
+        <label for="newUsername">Usuário</label>
+        <input type="text" id="newUsername" class="form-control" required>
+      </div>
+      <div class="form-group">
+        <label for="newPassword">Senha</label>
+        <input type="password" id="newPassword" class="form-control" required>
+      </div>
+      <div class="form-group">
+        <label for="userType">Tipo de Usuário</label>
+        <select id="userType" class="form-control" required>
+          <option value="common">Usuário Comum</option>
+          <option value="admin">Administrador</option>
+        </select>
+      </div>
+
+  </form>
+      <button type="button" class="btn btn-primary" id="saveUserBtn">
+        <i class="fas fa-save"></i> Salvar Usuário
+      </button>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="utils.js"></script>
+<script src="form.js"></script>
+</body>
+</html>
+
