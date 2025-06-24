@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
- <head>
+<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - Sistema de Férias</title>
@@ -15,10 +15,9 @@
         <span>Sistema de Férias</span>
       </div>
       
-      <!-- Formulário Principal (MANTIDO IGUAL) -->
       <form id="loginForm">
         <div class="form-group">
-          <label for="username"><i class="fas fa-user"></i> Usuário</label>
+          <label for="username"><i class="fas fa-user"></i> Usuário/E-mail</label>
           <input type="text" id="username" class="form-control" required autocomplete="username">
         </div>
         
@@ -32,7 +31,7 @@
         </button>
       </form>
 
-      <!-- 👇 BLOCO ADICIONADO (TESTE AUTH) 👇 -->
+      <!-- Botão de Teste (opcional) -->
       <div style="text-align: center; margin-top: 1.5rem;">
         <button onclick="testAuth()" class="btn btn-secondary" style="padding: 0.5rem 1rem;">
           <i class="fas fa-bolt"></i> Testar Autenticação
@@ -41,32 +40,53 @@
     </div>
   </div>
 
-  <!-- Scripts (ORDEM IMPORTANTE!) -->
+  <!-- Scripts EM ORDEM CORRETA -->
   <script src="supabase.js"></script>
-  <script src="utils.js"></script>
-  <script src="login.js"></script>
-
-  <!-- 👇 SCRIPT DE TESTE (ADICIONE ISSO) 👇 -->
   <script>
-    async function testAuth() {
-      const email = prompt("Digite um e-mail para teste:", "teste@exemplo.com");
-      const password = prompt("Digite uma senha para teste (6+ caracteres):", "123456");
+    // Sistema de carregamento seguro
+    async function initApp() {
+      // Espera o Supabase carregar
+      await new Promise(resolve => {
+        const check = () => {
+          if (window.supabase) resolve();
+          else setTimeout(check, 100);
+        };
+        check();
+      });
+
+      // Carrega utils.js e login.js DINAMICAMENTE
+      const loadScript = (src) => new Promise(resolve => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        document.body.appendChild(script);
+      });
+
+      await Promise.all([
+        loadScript('utils.js'),
+        loadScript('login.js')
+      ]);
+
+      console.log('✅ Todos os scripts carregados!');
+    }
+
+    // Função de teste (pode remover em produção)
+    window.testAuth = async () => {
+      const email = prompt("E-mail para teste:", "teste@exemplo.com");
+      const password = prompt("Senha para teste:", "123456");
       
       if (!email || !password) return;
       
       try {
-        const { error } = await supabase.auth.signUp({
-          email: email,
-          password: password
-        });
-        
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        
-        alert("✅ Sucesso!\nVerifique o usuário em:\nSupabase > Authentication > Users");
+        alert("✅ Login teste bem-sucedido!");
       } catch (err) {
         alert("❌ Erro: " + err.message);
       }
-    }
+    };
+
+    initApp();
   </script>
 </body>
 </html>
