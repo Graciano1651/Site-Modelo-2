@@ -1,30 +1,19 @@
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-
-  const email = document.getElementById('username').value.trim();
+  
+  const email = document.getElementById('username').value.trim(); // Supondo que seja email
   const password = document.getElementById('password').value.trim();
 
-  try {
-    // Usa o supabase global (definido em supabase.js)
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email)  // Verifique se o campo na tabela é 'email' ou 'username'
-      .eq('password', password)
-      .single();
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: email,
+    password: password
+  });
 
-    if (error || !data) {
-      alert('Email ou senha inválidos!');
-      return;
-    }
-
-    // Salva o usuário no sessionStorage
-    sessionStorage.setItem('currentUser', JSON.stringify(data));
-    
-    // Redireciona
-    window.location.href = 'dashboard.html';
-  } catch (err) {
-    console.error('Erro no login:', err);
-    alert('Erro ao fazer login. Tente novamente.');
+  if (error) {
+    alert('Login falhou: ' + error.message);
+    return;
   }
- });
+
+  sessionStorage.setItem('currentUser', JSON.stringify(data.user));
+  window.location.href = 'dashboard.html';
+});

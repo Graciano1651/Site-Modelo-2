@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-<script src="supabase.js"></script>
-
+ <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - Sistema de Férias</title>
@@ -17,31 +15,58 @@
         <span>Sistema de Férias</span>
       </div>
       
-      <!-- Botão do tema adicionado aqui -->
-      <div style="text-align: right; margin-bottom: 1rem;">
-        <button id="themeToggle" class="btn-theme"><i class="fas fa-moon"></i></button>
-      </div>
-      
+      <!-- Formulário Principal (MANTIDO IGUAL) -->
       <form id="loginForm">
         <div class="form-group">
           <label for="username"><i class="fas fa-user"></i> Usuário</label>
-          <input type="text" id="username" class="form-control" required>
+          <input type="text" id="username" class="form-control" required autocomplete="username">
         </div>
         
         <div class="form-group">
           <label for="password"><i class="fas fa-lock"></i> Senha</label>
-          <input type="password" id="password" class="form-control" required>
+          <input type="password" id="password" class="form-control" required autocomplete="current-password">
         </div>
         
         <button type="submit" class="btn btn-primary">
           <i class="fas fa-sign-in-alt"></i> Entrar
         </button>
       </form>
+
+      <!-- 👇 BLOCO ADICIONADO (TESTE AUTH) 👇 -->
+      <div style="text-align: center; margin-top: 1.5rem;">
+        <button onclick="testAuth()" class="btn btn-secondary" style="padding: 0.5rem 1rem;">
+          <i class="fas fa-bolt"></i> Testar Autenticação
+        </button>
+      </div>
     </div>
   </div>
 
-<script src="supabase.js" type="module"></script>
-<script src="utils.js" type="module"></script>
-<script src="login.js" type="module"></script>
+  <!-- Scripts (ORDEM IMPORTANTE!) -->
+  <script src="supabase.js"></script>
+  <script src="utils.js"></script>
+  <script src="login.js"></script>
+
+  <!-- 👇 SCRIPT DE TESTE (ADICIONE ISSO) 👇 -->
+  <script>
+    async function testAuth() {
+      const email = prompt("Digite um e-mail para teste:", "teste@exemplo.com");
+      const password = prompt("Digite uma senha para teste (6+ caracteres):", "123456");
+      
+      if (!email || !password) return;
+      
+      try {
+        const { error } = await supabase.auth.signUp({
+          email: email,
+          password: password
+        });
+        
+        if (error) throw error;
+        
+        alert("✅ Sucesso!\nVerifique o usuário em:\nSupabase > Authentication > Users");
+      } catch (err) {
+        alert("❌ Erro: " + err.message);
+      }
+    }
+  </script>
 </body>
 </html>
