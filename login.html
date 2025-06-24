@@ -31,62 +31,157 @@
         </button>
       </form>
 
-      <!-- Botão de Teste (opcional) -->
-      <div style="text-align: center; margin-top: 1.5rem;">
+    <div style="text-align: center; margin-top: 1.5rem;">
         <button onclick="testAuth()" class="btn btn-secondary" style="padding: 0.5rem 1rem;">
           <i class="fas fa-bolt"></i> Testar Autenticação
         </button>
+      </div>
+
+      <div id="loadingFeedback" style="display: none; text-align: center; margin: 1rem 0; color: var(--primary);">
+        <i class="fas fa-spinner fa-spin"></i> Carregando sistema...
+      </div>
+
+      <div id="errorFeedback" style="display: none; text-align: center; margin: 1rem 0; padding: 0.5rem; background-color: rgba(247, 37, 133, 0.1); border-radius: 5px;">
+        <i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i>
+        <span id="errorText" style="color: var(--danger);"></span>
       </div>
     </div>
   </div>
 
   <!-- Scripts EM ORDEM CORRETA -->
   <script src="supabase.js"></script>
+  <script src="utils.js"></script>
   <script>
-    // Sistema de carregamento seguro
-    async function initApp() {
-      // Espera o Supabase carregar
-      await new Promise(resolve => {
-        const check = () => {
-          if (window.supabase) resolve();
-          else setTimeout(check, 100);
-        };
-        check();
-      });
-
-      // Carrega utils.js e login.js DINAMICAMENTE
-      const loadScript = (src) => new Promise(resolve => {
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = resolve;
-        document.body.appendChild(script);
-      });
-
-      await Promise.all([
-        loadScript('utils.js'),
-        loadScript('login.js')
-      ]);
-
-      console.log('✅ Todos os scripts carregados!');
+    // Configuração global de tratamento de erros
+    function handleAuthError(error) {
+      console.error('Erro de autenticação:', error);
+      
+      let userMessage = 'Erro durante a autenticação';
+      if (error.message.includes('Invalid login credentials')) {
+        userMessage = 'E-mail ou senha incorretos';
+      } else if (error.message.includes('Email not confirmed')) {
+        userMessage = 'E-mail não confirmado';
+      } else if (error.message.includes('Too many requests')) {
+        userMessage = 'Muitas tentativas. Tente novamente mais tarde.';
+      }
+      
+      showError(userMessage);
+      return userMessage;
     }
 
-    // Função de teste (pode remover em produção)
-    window.testAuth = async () => {
-      const email = prompt("E-mail para teste:", "teste@exemplo.com");
-      const password = prompt("Senha para teste:", "123456");
+    // Funções de UI
+    function showLoading(show) {
+      document.getElementById('loadingFeedback').style.display = show ? 'block' : 'none';
+    }
+    
+    function showError(message) {
+      const errorElement = document.getElementById('errorFeedback');
+      document.getElementById('errorText').textContent = message;
+      errorElement.style.display = 'block';
       
-      if (!email || !password) return;
+      // Oculta o erro após 5 segundos
+      setTimeout(() => {
+        errorElement.style.display = 'none';
+      }, 5000);
+    }
+    
+    function hideError() {
+      document.getElementById('errorFeedback').style.display = 'none';
+    }
+
+    // Função de login principal
+    async function handleLogin(email, password) {
+      try {
+        showLoading(true);
+        hideError();
+        
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email,
+          password: password
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        if (!data || !data.user) {
+          throw new Error('Resposta inválida do servidor');
+        }
+
+        // Armazena apenas os dados essenciais
+        sessionStorage.setItem('currentUser', JSON.stringify({
+          id: data.user.id,
+          email: data.user.email,
+          access_token: data.session.access_token
+        }));
+
+        // Redirecionamento seguro
+        window.location.href = 'dashboard.html';
+        
+      } catch (error) {
+        const message = handleAuthError(error);
+        throw new Error(message);
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    // Evento de submit do formulário
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
       
       try {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        alert("✅ Login teste bem-sucedido!");
-      } catch (err) {
-        alert("❌ Erro: " + err.message);
+        await handleLogin(email, password);
+      } catch (error) {
+        // Erro já foi tratado pela handleAuthError
+      }
+    });
+
+    // Função de teste com credenciais padrão válidas
+    window.testAuth = async () => {
+      try {
+        const testEmail = "gui_graciano@hotmail.com"; // Substitua por um e-mail válido
+        const testPassword = "16515131"; // Substitua por uma senha válida
+        
+        if (!testEmail || !testPassword) {
+          showError('Credenciais de teste não configuradas');
+          return;
+        }
+        
+        await handleLogin(testEmail, testPassword);
+        
+      } catch (error) {
+        console.error('Erro no teste de autenticação:', error);
       }
     };
 
-    initApp();
+    // Inicialização segura
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        showLoading(true);
+        
+        // Verifica se o Supabase está carregado
+        if (!window.supabase) {
+          await new Promise((resolve) => {
+            const checkInterval = setInterval(() => {
+              if (window.supabase) {
+                clearInterval(checkInterval);
+                resolve();
+              }
+            }, 100);
+          });
+        }
+        
+        console.log('Sistema pronto para autenticação');
+      } catch (error) {
+        console.error('Erro na inicialização:', error);
+        showError('Erro ao carregar o sistema. Recarregue a página.');
+      } finally {
+        showLoading(false);
+      }
+    });
   </script>
 </body>
 </html>
