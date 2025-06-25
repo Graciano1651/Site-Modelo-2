@@ -2,38 +2,42 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   
   try {
-    const { data, error } = await window.supabase.auth.signInWithPassword({
-      email: document.getElementById('username').value.trim(),
-      password: document.getElementById('password').value.trim()
+    // 1. Obter credenciais do formulário
+    const email = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+
+    // 2. Autenticação no Supabase
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password
     });
 
     if (error) throw error;
 
+    // 3. Buscar informações adicionais do usuário
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
+
+    // 4. Armazenar sessão
     sessionStorage.setItem('currentUser', JSON.stringify({
       auth: data.user,
-      profile: data.session
+      profile: userProfile || { userType: 'common' } // Padrão para usuário comum
     }));
 
+    // 5. Redirecionar para dashboard
     window.location.href = 'dashboard.html';
 
-  } catch (err) {
-    console.error('Erro no login:', err);
-    alert('Falha no login: ' + (err.message || 'Credenciais inválidas'));
+  } catch (error) {
+    // 6. Tratamento de erros
+    console.error('Erro no login:', error);
+    
+    const errorMessage = error.message.includes('Invalid login credentials') 
+      ? 'E-mail ou senha incorretos' 
+      : 'Erro ao conectar com o servidor';
+    
+    alert(errorMessage);
   }
 });
-
-// Função de teste (MANTIDA ORIGINAL)
-window.testAuth = async () => {
-  const email = prompt("E-mail para teste:", "teste@exemplo.com");
-  const password = prompt("Senha para teste:", "123456");
-  
-  if (!email || !password) return;
-  
-  try {
-    const { error } = await window.supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    alert("✅ Login teste bem-sucedido!");
-  } catch (err) {
-    alert("❌ Erro: " + err.message);
-  }
-};

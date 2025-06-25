@@ -5,10 +5,8 @@ async function ensureSupabaseReady() {
   });
 }
 
-/**
- * Carrega dados do dashboard com tratamento de erros
- */
-async function carregarDados() {
+// Carrega dados do dashboard
+async function carregarDashboard() {
   try {
     const { data: funcionarios = [], error: errFunc } = await supabase
       .from('employees')
@@ -29,55 +27,29 @@ async function carregarDados() {
   }
 }
 
-/**
- * Atualiza a interface do usuário
- */
+// Atualiza a interface do usuário
 function atualizarUI(funcionarios, ferias) {
   try {
-    // Atualiza contagem de funcionários
-    if (document.getElementById('totalEmployees')) {
-      document.getElementById('totalEmployees').textContent = funcionarios.length;
-    }
-
-    // Atualiza funcionários em férias
-    if (document.getElementById('onVacation')) {
-      document.getElementById('onVacation').textContent = 
-        funcionarios.filter(f => f.on_vacation).length;
-    }
-
-    // Atualiza férias disponíveis
-    if (document.getElementById('availableVacation')) {
-      document.getElementById('availableVacation').textContent = 
-        funcionarios.filter(f => 
-          !f.on_vacation && 
-          calcDisponibilidade(f.hire_date, f.last_vacation)
-        ).length;
-    }
-
-    // Atualiza conflitos
-    if (document.getElementById('conflicts')) {
-      document.getElementById('conflicts').textContent = 
-        detectarConflitos(ferias, funcionarios).length;
-    }
-  } catch (uiError) {
-    console.error('Erro ao atualizar UI:', uiError);
+    document.getElementById('totalEmployees').textContent = funcionarios.length;
+    document.getElementById('onVacation').textContent = funcionarios.filter(f => f.on_vacation).length;
+    document.getElementById('availableVacation').textContent = funcionarios.filter(f => 
+      !f.on_vacation && calcDisponibilidade(f.hire_date, f.last_vacation)).length;
+    document.getElementById('conflicts').textContent = detectarConflitos(ferias, funcionarios).length;
+  } catch (error) {
+    console.error('Erro ao atualizar UI:', error);
   }
 }
 
-// =============================================
-// FUNÇÕES ORIGINAIS (MANTIDAS)
-// =============================================
-
+// Funções originais mantidas
 function detectarConflitos(ferias, funcionarios) {
   const conflitos = [];
-const funcionariosMap = {};
-
-  // Implementação original mantida
+  const funcionariosMap = {};
+  
   funcionarios.forEach(f => {
     funcionariosMap[f.id] = f;
   });
 
-const porEquipe = {};
+  const porEquipe = {};
   ferias.forEach(f => {
     const funcionario = funcionariosMap[f.employee_id];
     if (!funcionario) return;
@@ -88,7 +60,7 @@ const porEquipe = {};
   });
 
   for (const equipe in porEquipe) {
-  const lista = porEquipe[equipe];
+    const lista = porEquipe[equipe];
     for (let i = 0; i < lista.length; i++) {
       for (let j = i + 1; j < lista.length; j++) {
         if (periodosConflitantes(lista[i], lista[j])) {
@@ -113,35 +85,34 @@ function periodosConflitantes(a, b) {
   return inicioA <= fimB && fimA >= inicioB;
 }
 
-// =============================================
-// INICIALIZAÇÃO PRINCIPAL
-// =============================================
-
+// Inicialização principal
 document.addEventListener('DOMContentLoaded', async () => {
   try {
-    // 1. Verifica autenticação
-    if (!sessionStorage.getItem('currentUser')) {
+    await ensureSupabaseReady();
+    
+    // Verifica autenticação
+    const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+    if (!currentUser) {
       window.location.href = 'login.html';
       return;
     }
 
-    // 2. Garante Supabase pronto
-    await ensureSupabaseReady();
+    // Controle de acesso
+    if (currentUser.profile?.userType === 'admin') {
+      document.getElementById('adminLinks').style.display = 'inline-block';
+    }
 
-    // 3. Carrega dados
-    const { funcionarios, ferias } = await carregarDados();
-
-    // 4. Atualiza UI
+    // Carrega dados
+    const { funcionarios, ferias } = await carregarDashboard();
     atualizarUI(funcionarios, ferias);
 
-    // 5. Configura eventos
-    document.getElementById('themeToggle')?.addEventListener('click', toggleTheme);
-    document.getElementById('logoutBtn')?.addEventListener('click', () => {
+    // Configura eventos
+    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+    document.getElementById('logoutBtn').addEventListener('click', () => {
       sessionStorage.removeItem('currentUser');
       window.location.href = 'login.html';
     });
-
-    // 6. Aplica tema salvo
+    
     applySavedTheme();
 
   } catch (error) {

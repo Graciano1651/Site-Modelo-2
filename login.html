@@ -31,13 +31,7 @@
         </button>
       </form>
 
-    <div style="text-align: center; margin-top: 1.5rem;">
-        <button onclick="testAuth()" class="btn btn-secondary" style="padding: 0.5rem 1rem;">
-          <i class="fas fa-bolt"></i> Testar Autenticação
-        </button>
-      </div>
-
-      <div id="loadingFeedback" style="display: none; text-align: center; margin: 1rem 0; color: var(--primary);">
+    <div id="loadingFeedback" style="display: none; text-align: center; margin: 1rem 0; color: var(--primary);">
         <i class="fas fa-spinner fa-spin"></i> Carregando sistema...
       </div>
 
@@ -51,137 +45,38 @@
   <!-- Scripts EM ORDEM CORRETA -->
   <script src="supabase.js"></script>
   <script src="utils.js"></script>
+  <script src="login.js"></script>
+
   <script>
-    // Configuração global de tratamento de erros
-    function handleAuthError(error) {
-      console.error('Erro de autenticação:', error);
+    // Sistema de inicialização seguro
+    async function initApp() {
+      document.getElementById('loadingFeedback').style.display = 'block';
       
-      let userMessage = 'Erro durante a autenticação';
-      if (error.message.includes('Invalid login credentials')) {
-        userMessage = 'E-mail ou senha incorretos';
-      } else if (error.message.includes('Email not confirmed')) {
-        userMessage = 'E-mail não confirmado';
-      } else if (error.message.includes('Too many requests')) {
-        userMessage = 'Muitas tentativas. Tente novamente mais tarde.';
-      }
-      
-      showError(userMessage);
-      return userMessage;
-    }
-
-    // Funções de UI
-    function showLoading(show) {
-      document.getElementById('loadingFeedback').style.display = show ? 'block' : 'none';
-    }
-    
-    function showError(message) {
-      const errorElement = document.getElementById('errorFeedback');
-      document.getElementById('errorText').textContent = message;
-      errorElement.style.display = 'block';
-      
-      // Oculta o erro após 5 segundos
-      setTimeout(() => {
-        errorElement.style.display = 'none';
-      }, 5000);
-    }
-    
-    function hideError() {
-      document.getElementById('errorFeedback').style.display = 'none';
-    }
-
-    // Função de login principal
-    async function handleLogin(email, password) {
-      try {
-        showLoading(true);
-        hideError();
-        
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: email,
-          password: password
-        });
-
-        if (error) {
-          throw error;
-        }
-
-        if (!data || !data.user) {
-          throw new Error('Resposta inválida do servidor');
-        }
-
-        // Armazena apenas os dados essenciais
-        sessionStorage.setItem('currentUser', JSON.stringify({
-          id: data.user.id,
-          email: data.user.email,
-          access_token: data.session.access_token
-        }));
-
-        // Redirecionamento seguro
-        window.location.href = 'dashboard.html';
-        
-      } catch (error) {
-        const message = handleAuthError(error);
-        throw new Error(message);
-      } finally {
-        showLoading(false);
-      }
-    }
-
-    // Evento de submit do formulário
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value.trim();
-      
-      try {
-        await handleLogin(email, password);
-      } catch (error) {
-        // Erro já foi tratado pela handleAuthError
-      }
-    });
-
-    // Função de teste com credenciais padrão válidas
-    window.testAuth = async () => {
-      try {
-        const testEmail = "gui_graciano@hotmail.com"; // Substitua por um e-mail válido
-        const testPassword = "16515131"; // Substitua por uma senha válida
-        
-        if (!testEmail || !testPassword) {
-          showError('Credenciais de teste não configuradas');
-          return;
-        }
-        
-        await handleLogin(testEmail, testPassword);
-        
-      } catch (error) {
-        console.error('Erro no teste de autenticação:', error);
-      }
-    };
-
-    // Inicialização segura
-    document.addEventListener('DOMContentLoaded', async () => {
-      try {
-        showLoading(true);
-        
-        // Verifica se o Supabase está carregado
+     try {
+        // Espera o Supabase estar pronto
         if (!window.supabase) {
           await new Promise((resolve) => {
-            const checkInterval = setInterval(() => {
+            const check = setInterval(() => {
               if (window.supabase) {
-                clearInterval(checkInterval);
+                clearInterval(check);
                 resolve();
               }
             }, 100);
           });
         }
-        
-        console.log('Sistema pronto para autenticação');
-      } catch (error) {
-        console.error('Erro na inicialização:', error);
-        showError('Erro ao carregar o sistema. Recarregue a página.');
+
+        console.log('✅ Sistema pronto para autenticação');
+      } catch (e) {
+        console.error('Erro na inicialização:', e);
+        document.getElementById('errorText').textContent = 'Erro ao carregar o sistema. Recarregue a página.';
+        document.getElementById('errorFeedback').style.display = 'block';
       } finally {
-        showLoading(false);
+        document.getElementById('loadingFeedback').style.display = 'none';
       }
-    });
+    }
+
+    // Inicia o app quando o DOM estiver pronto
+    document.addEventListener('DOMContentLoaded', initApp);
   </script>
 </body>
 </html>
