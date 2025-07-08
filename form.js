@@ -1,147 +1,156 @@
-import { supabase } from './supabase.js';
-
-// Carrega usuário logado
-const usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado'));
-if (!usuarioLogado || !usuarioLogado.is_admin) {
-  alert('Apenas administradores podem acessar esta página.');
-  window.location.href = 'login.html';
-}
-
-// Preenche o campo de ID oculto para edição
-const params = new URLSearchParams(window.location.search);
-const funcionarioId = params.get('id');
-
-if (funcionarioId) {
-  carregarFuncionario(funcionarioId);
-}
-
-async function carregarFuncionario(id) {
-  const { data: funcionario, error } = await supabase
-    .from('employees')
-    .select('*')
-    .eq('id', id)
-    .single();
-
-  if (error) {
-    alert('Erro ao carregar funcionário.');
-    console.error(error);
-    return;
-  }
-
-  document.getElementById('nome').value = funcionario.nome;
-  document.getElementById('email').value = funcionario.email;
-  document.getElementById('equipe').value = funcionario.equipe;
-
-  const { data: ferias, error: errorFerias } = await supabase
-    .from('vacation_periods')
-    .select('*')
-    .eq('employee_id', id);
-
-  if (errorFerias) {
-    console.error('Erro ao carregar férias', errorFerias);
-    return;
-  }
-
-  const feriasContainer = document.getElementById('feriasContainer');
-  feriasContainer.innerHTML = '';
-
-  ferias.forEach((ferias, index) => {
-    adicionarPeriodoFerias(ferias.data_inicio, ferias.data_fim);
+async function ensureSupabaseReady() {
+  return new Promise((resolve) => {
+    if (window.supabase) return resolve();
+    document.addEventListener('supabase-ready', () => resolve());
   });
 }
 
-// Adiciona novo período de férias
-document.getElementById('adicionarFerias').addEventListener('click', () => {
-  adicionarPeriodoFerias();
-});
-
-function adicionarPeriodoFerias(dataInicio = '', dataFim = '') {
-  const container = document.getElementById('feriasContainer');
-  const div = document.createElement('div');
-  div.classList.add('periodo-ferias');
-  div.innerHTML = `
-    <input type="date" class="inicio" value="${dataInicio}">
-    <input type="date" class="fim" value="${dataFim}">
-    <button type="button" class="remover">Remover</button>
-  `;
-  container.appendChild(div);
-
-  div.querySelector('.remover').addEventListener('click', () => {
-    div.remove();
-  });
-}
-
-// Salvar funcionário e férias
-document.getElementById('formFuncionario').addEventListener('submit', async (e) => {
-  e.preventDefault();
-
-  const nome = document.getElementById('nome').value.trim();
-  const email = document.getElementById('email').value.trim();
-  const equipe = document.getElementById('equipe').value.trim();
-
-  let funcionarioIdFinal;
-
-  if (funcionarioId) {
-    // Atualiza funcionário existente
-    const { error } = await supabase
-      .from('employees')
-      .update({ nome, email, equipe })
-      .eq('id', funcionarioId);
-
-    if (error) {
-      alert('Erro ao atualizar funcionário.');
-      console.error(error);
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    await ensureSupabaseReady();
+    
+    // Verifica autenticação
+    const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+    if (!currentUser) {
+      window.location.href = 'login.html';
       return;
     }
 
-    funcionarioIdFinal = funcionarioId;
+    // Configurações do upload de foto
+    const photoInput = document.getElementById('photoInput');
+    const photoPreview = document.getElementById('photoPreview');
+    let photoUrl = '';
 
-    // Remove períodos antigos
-    await supabase.from('vacation_periods').delete().eq('employee_id', funcionarioIdFinal);
-  } else {
-    // Insere novo funcionário
-    const { data, error } = await supabase
-      .from('employees')
-      .insert([{ nome, email, equipe }])
-      .select()
-      .single();
+    photoInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          photoPreview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
 
-    if (error || !data) {
-      alert('Erro ao cadastrar funcionário.');
-      console.error(error);
-      return;
+    document.getElementById('uploadBtn').addEventListener('click', () => {
+      photoInput.click();
+    });
+
+    // Botão de limpar
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      document.getElementById('employeeForm').reset();
+      photoPreview.innerHTML = '<i class="fas fa-user"></i>';
+      photoUrl = '';
+    });
+
+    // Botão de salvar
+    document.getElementById('saveButton').addEventListener('click', async (e) => {
+      e.preventDefault();
+      
+      try {
+        // Coleta dos dados
+        const name = document.getElementById('name').value.trim();
+        const matricula = document.getElementById('matricula').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        const hireDate = document.getElementById('hireDate').value;
+        const status = document.getElementById('status').value;
+        const team = document.getElementById('team').value;
+        const lastVacation = document.getElementById('lastVacation').value || null;
+
+        // Validação
+        if (!name || !matricula || !hireDate || !status || !team) {
+          await Swal.fire('Atenção!', 'Preencha todos os campos obrigatórios.', 'warning');
+          return;
+        }
+
+        // Dados do funcionário
+        const employeeData = {
+          name,
+          matricula,
+          phone,
+          hire_date: hireDate,
+          status,
+          team,
+          last_vacation: lastVacation,
+          on_vacation: false,
+          photo: photoUrl,
+        };
+
+        // Chamada ao Supabase com headers de autenticação
+        const { data, error } = await supabase
+          .from('employees')
+          .insert([employeeData])
+          .select();
+
+        if (error) throw error;
+
+        // Limpeza do formulário
+        document.getElementById('employeeForm').reset();
+        photoPreview.innerHTML = '<i class="fas fa-user"></i>';
+        photoUrl = '';
+
+        // Mensagem de sucesso
+        await Swal.fire({
+          title: 'Sucesso!',
+          text: 'Funcionário cadastrado com sucesso.',
+          icon: 'success',
+          confirmButtonText: 'OK'
+        });
+
+        // Atualiza a lista
+        await loadEmployees();
+
+      } catch (error) {
+        console.error('Erro ao salvar funcionário:', error);
+        await Swal.fire({
+          title: 'Erro!',
+          text: error.message.includes('row-level security') ? 
+            'Permissão negada. Verifique as configurações de segurança no Supabase.' : 
+            'Não foi possível cadastrar o funcionário. ' + error.message,
+          icon: 'error',
+          confirmButtonText: 'OK'
+        });
+      }
+    });
+
+    // Carrega a lista de funcionários
+    async function loadEmployees() {
+      try {
+        const { data: employees, error } = await supabase
+          .from('employees')
+          .select('*')
+          .order('name', { ascending: true });
+
+        if (error) throw error;
+
+        const tbody = document.getElementById('employeesList');
+        tbody.innerHTML = '';
+
+        employees.forEach(emp => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${emp.name}</td>
+            <td>${emp.matricula}</td>
+            <td>${window.utils?.formatStatus(emp.status) || emp.status}</td>
+            <td>${emp.team}</td>
+            <td>${emp.last_vacation ? window.utils?.formatDate(emp.last_vacation) || emp.last_vacation : 'Nunca'}</td>
+            <td>
+              <a href="profile.html?id=${emp.id}" class="btn-view"><i class="fas fa-eye"></i></a>
+              <a href="cadastro.html?id=${emp.id}" class="btn-edit"><i class="fas fa-edit"></i></a>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (error) {
+        console.error('Erro ao carregar funcionários:', error);
+      }
     }
 
-    funcionarioIdFinal = data.id;
+    // Inicialização
+    await loadEmployees();
+
+  } catch (error) {
+    console.error('Erro na inicialização:', error);
+    window.location.href = 'login.html';
   }
-
-  // Insere novos períodos de férias
-  const periodos = document.querySelectorAll('.periodo-ferias');
-  const feriasData = [];
-
-  periodos.forEach(p => {
-    const data_inicio = p.querySelector('.inicio').value;
-    const data_fim = p.querySelector('.fim').value;
-
-    if (data_inicio && data_fim) {
-      feriasData.push({
-        employee_id: funcionarioIdFinal,
-        data_inicio,
-        data_fim
-      });
-    }
-  });
-
-  if (feriasData.length > 0) {
-    const { error } = await supabase.from('vacation_periods').insert(feriasData);
-
-    if (error) {
-      alert('Erro ao salvar períodos de férias.');
-      console.error(error);
-      return;
-    }
-  }
-
-  alert('Funcionário salvo com sucesso!');
-  window.location.href = 'dashboard.html';
-});
+ });
