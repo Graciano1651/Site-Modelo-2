@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<script src="supabase.js"></script>
+  <script src="supabase.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Férias Disponíveis</title>
@@ -46,53 +46,72 @@
 
   <script src="utils.js"></script>
   <script>
-    const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-    
-    if (!currentUser) {
-      window.location.href = 'login.html';
+    async function ensureSupabaseReady() {
+      return new Promise((resolve) => {
+        if (window.supabase) return resolve();
+        document.addEventListener('supabase-ready', () => resolve());
+      });
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      applySavedTheme();
-      document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-      await loadAvailableEmployees();
+      try {
+        const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+        if (!currentUser) {
+          window.location.href = 'login.html';
+          return;
+        }
+
+        await ensureSupabaseReady();
+        applySavedTheme();
+        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+        await loadAvailableEmployees();
+      } catch (error) {
+        console.error('Erro na inicialização:', error);
+      }
     });
 
     async function loadAvailableEmployees() {
-      const { data: employees, error } = await supabase.from('employees').select('*');
-      
-      if (error) {
+      try {
+        const { data: employees, error } = await supabase.from('employees').select('*');
+        if (error) throw error;
+
+        const tbody = document.getElementById('availableTable');
+        tbody.innerHTML = '';
+
+        const now = new Date();
+        const available = employees.filter(emp => {
+          if (emp.on_vacation) return false;
+          const refDate = emp.last_vacation ? new Date(emp.last_vacation) : new Date(emp.hire_date);
+          const months = (now.getFullYear() - refDate.getFullYear()) * 12 + 
+                        (now.getMonth() - refDate.getMonth());
+          return months >= 12;
+        });
+
+        if (available.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Nenhum funcionário com férias disponíveis</td></tr>';
+          return;
+        }
+
+        available.forEach(emp => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${emp.name || 'Não informado'}</td>
+            <td>${emp.matricula || 'N/A'}</td>
+            <td>${window.utils?.formatStatus(emp.status) || emp.status || 'N/A'}</td>
+            <td>${emp.team || 'N/A'}</td>
+            <td>${window.utils?.formatDate(emp.hire_date) || 'N/A'}</td>
+            <td>${emp.last_vacation ? window.utils?.formatDate(emp.last_vacation) : 'Nunca'}</td>
+            <td><a href="profile.html?id=${emp.id}" class="btn-view"><i class="fas fa-eye"></i> Ver</a></td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+      } catch (error) {
         console.error('Erro ao carregar:', error);
-        return;
+        document.getElementById('availableTable').innerHTML = 
+          '<tr><td colspan="7" style="text-align: center; color: var(--danger);">Erro ao carregar lista</td></tr>';
       }
-
-      const tbody = document.getElementById('availableTable');
-      tbody.innerHTML = '';
-
-      const now = new Date();
-      const available = employees.filter(emp => {
-        if (emp.on_vacation) return false;
-        const refDate = emp.last_vacation ? new Date(emp.last_vacation) : new Date(emp.hire_date);
-        const months = (now.getFullYear() - refDate.getFullYear()) * 12 + 
-                      (now.getMonth() - refDate.getMonth());
-        return months >= 12;
-      });
-
-      available.forEach(emp => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${emp.name}</td>
-          <td>${emp.matricula}</td>
-          <td>${formatStatus(emp.status)}</td>
-          <td>${emp.team}</td>
-          <td>${formatDate(emp.hire_date)}</td>
-          <td>${emp.last_vacation ? formatDate(emp.last_vacation) : 'N/A'}</td>
-          <td><a href="profile.html?id=${emp.id}" class="btn-view"><i class="fas fa-eye"></i> Ver</a></td>
-        `;
-        tbody.appendChild(tr);
-      });
     }
   </script>
 </body>
-</html>
-
+ </html>

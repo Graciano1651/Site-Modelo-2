@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<script src="supabase.js"></script>
+  <script src="supabase.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Funcionários em Férias</title>
@@ -45,56 +45,76 @@
 
   <script src="utils.js"></script>
   <script>
-    const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-    
-    if (!currentUser) {
-      window.location.href = 'login.html';
+    async function ensureSupabaseReady() {
+      return new Promise((resolve) => {
+        if (window.supabase) return resolve();
+        document.addEventListener('supabase-ready', () => resolve());
+      });
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      applySavedTheme();
-      document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-      await loadCurrentVacations();
+      try {
+        const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+        if (!currentUser) {
+          window.location.href = 'login.html';
+          return;
+        }
+
+        await ensureSupabaseReady();
+        applySavedTheme();
+        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+        await loadCurrentVacations();
+      } catch (error) {
+        console.error('Erro na inicialização:', error);
+      }
     });
 
     async function loadCurrentVacations() {
-      const now = new Date();
-      const month = now.getMonth();
-      const year = now.getFullYear();
+      try {
+        const now = new Date();
+        const month = now.getMonth();
+        const year = now.getFullYear();
 
-      const { data: employees, error } = await supabase
-        .from('employees')
-        .select('*')
-        .eq('on_vacation', true);
+        const { data: employees, error } = await supabase
+          .from('employees')
+          .select('*')
+          .eq('on_vacation', true);
 
-      if (error) {
-        console.error('Erro ao carregar:', error);
-        return;
+        if (error) throw error;
+
+        const tbody = document.getElementById('vacationTable');
+        tbody.innerHTML = '';
+
+        const current = employees.filter(emp => {
+          if (!emp.vacation_start_date) return false;
+          const start = new Date(emp.vacation_start_date);
+          return start.getMonth() === month && start.getFullYear() === year;
+        });
+
+        if (current.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Nenhum funcionário em férias este mês</td></tr>';
+          return;
+        }
+
+        current.forEach(emp => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${emp.name || 'Não informado'}</td>
+            <td>${emp.matricula || 'N/A'}</td>
+            <td>${emp.team || 'N/A'}</td>
+            <td>${window.utils?.formatDate(emp.vacation_start_date) || 'N/A'}</td>
+            <td>${emp.total_vacation_days || '0'} dias</td>
+            <td><a href="profile.html?id=${emp.id}" class="btn-view"><i class="fas fa-eye"></i> Ver</a></td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+      } catch (error) {
+        console.error('Erro ao carregar férias:', error);
+        document.getElementById('vacationTable').innerHTML = 
+          '<tr><td colspan="6" style="text-align: center; color: var(--danger);">Erro ao carregar lista de férias</td></tr>';
       }
-
-      const tbody = document.getElementById('vacationTable');
-      tbody.innerHTML = '';
-
-      const current = employees.filter(emp => {
-        if (!emp.vacation_start_date) return false;
-        const start = new Date(emp.vacation_start_date);
-        return start.getMonth() === month && start.getFullYear() === year;
-      });
-
-      current.forEach(emp => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${emp.name}</td>
-          <td>${emp.matricula}</td>
-          <td>${emp.team}</td>
-          <td>${formatDate(emp.vacation_start_date)}</td>
-          <td>${emp.total_vacation_days} dias</td>
-          <td><a href="profile.html?id=${emp.id}" class="btn-view"><i class="fas fa-eye"></i> Ver</a></td>
-        `;
-        tbody.appendChild(tr);
-      });
     }
   </script>
 </body>
-</html>
-
+ </html>

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<script src="supabase.js"></script>
+  <script src="supabase.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Todos os Funcionários</title>
@@ -45,52 +45,76 @@
 
   <script src="utils.js"></script>
   <script>
-    const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-    
-    if (!currentUser) {
-      window.location.href = 'login.html';
+    // Espera o Supabase estar pronto
+    async function ensureSupabaseReady() {
+      return new Promise((resolve) => {
+        if (window.supabase) return resolve();
+        document.addEventListener('supabase-ready', () => resolve());
+      });
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      applySavedTheme();
-      document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-      await loadEmployees();
+      try {
+        const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+        if (!currentUser) {
+          window.location.href = 'login.html';
+          return;
+        }
 
-      document.getElementById('searchInput').addEventListener('input', loadEmployees);
+        await ensureSupabaseReady();
+        applySavedTheme();
+        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+        
+        await loadEmployees();
+        document.getElementById('searchInput').addEventListener('input', loadEmployees);
+      } catch (error) {
+        console.error('Erro na inicialização:', error);
+      }
     });
 
     async function loadEmployees() {
-      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-      
-      let query = supabase.from('employees').select('*');
-      
-      if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%,matricula.ilike.%${searchTerm}%`);
+      try {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        
+        let query = supabase
+          .from('employees')
+          .select('*')
+          .order('name', { ascending: true });
+
+        if (searchTerm) {
+          query = query.or(`name.ilike.%${searchTerm}%,matricula.ilike.%${searchTerm}%`);
+        }
+
+        const { data: employees, error } = await query;
+
+        if (error) throw error;
+
+        const tbody = document.getElementById('employeeTable');
+        tbody.innerHTML = '';
+
+        if (employees.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhum funcionário encontrado</td></tr>';
+          return;
+        }
+
+        employees.forEach(emp => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${emp.name || 'Não informado'}</td>
+            <td>${emp.matricula || 'N/A'}</td>
+            <td>${window.utils?.formatStatus(emp.status) || emp.status || 'N/A'}</td>
+            <td>${emp.team ? 'Frente ' + emp.team : 'N/A'}</td>
+            <td><a href="profile.html?id=${emp.id}" class="btn-view"><i class="fas fa-eye"></i> Ver</a></td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+      } catch (error) {
+        console.error('Erro ao carregar funcionários:', error);
+        const tbody = document.getElementById('employeeTable');
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--danger);">Erro ao carregar lista de funcionários</td></tr>';
       }
-
-      const { data: employees, error } = await query;
-
-      if (error) {
-        console.error('Erro ao carregar:', error);
-        return;
-      }
-
-      const tbody = document.getElementById('employeeTable');
-      tbody.innerHTML = '';
-
-      employees.forEach(emp => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${emp.name}</td>
-          <td>${emp.matricula}</td>
-          <td>${formatStatus(emp.status)}</td>
-          <td>Frente ${emp.team}</td>
-          <td><a href="profile.html?id=${emp.id}" class="btn-view"><i class="fas fa-eye"></i> Ver</a></td>
-        `;
-        tbody.appendChild(tr);
-      });
     }
   </script>
 </body>
-</html>
-
+ </html>
