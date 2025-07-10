@@ -70,11 +70,7 @@
     });
 
     async function loadCurrentVacations() {
-      try {
-        const now = new Date();
-        const month = now.getMonth();
-        const year = now.getFullYear();
-
+    try {
         const { data: employees, error } = await supabase
           .from('employees')
           .select('*')
@@ -85,14 +81,25 @@
         const tbody = document.getElementById('vacationTable');
         tbody.innerHTML = '';
 
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        
         const current = employees.filter(emp => {
           if (!emp.vacation_start_date) return false;
-          const start = new Date(emp.vacation_start_date);
-          return start.getMonth() === month && start.getFullYear() === year;
+          const startDate = new Date(emp.vacation_start_date);
+          return startDate.getMonth() === currentMonth && 
+                 startDate.getFullYear() === currentYear;
         });
 
         if (current.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Nenhum funcionário em férias este mês</td></tr>';
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6" style="text-align: center;">
+                Nenhum funcionário em férias no mês atual
+              </td>
+            </tr>
+          `;
           return;
         }
 
@@ -111,10 +118,15 @@
 
       } catch (error) {
         console.error('Erro ao carregar férias:', error);
-        document.getElementById('vacationTable').innerHTML = 
-          '<tr><td colspan="6" style="text-align: center; color: var(--danger);">Erro ao carregar lista de férias</td></tr>';
+        document.getElementById('vacationTable').innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align: center; color: var(--danger);">
+              Erro ao carregar lista de férias
+            </td>
+          </tr>
+        `;
       }
     }
   </script>
 </body>
- </html>
+</html>
