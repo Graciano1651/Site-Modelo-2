@@ -6,13 +6,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Funcionários em Férias</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
   <div class="container">
-    <!-- Cabeçalho mantido igual -->
+    <div class="header">
+      <div class="logo">
+        <i class="fas fa-plane-departure"></i>
+        <span>Funcionários em Férias</span>
+      </div>
+      <div class="nav-links">
+        <a href="dashboard.html"><i class="fas fa-arrow-left"></i> Voltar</a>
+        <button id="themeToggle" class="btn-theme"><i class="fas fa-moon"></i></button>
+      </div>
+    </div>
+
     <div class="content">
-      <h2><i class="fas fa-calendar-alt"></i> Férias Ativas</h2> <!-- Título alterado -->
+      <h2><i class="fas fa-calendar-alt"></i> Férias Ativas</h2>
       <div class="table-responsive" style="margin-top: 1rem;">
         <table>
           <thead>
@@ -21,7 +31,7 @@
               <th>Matrícula</th>
               <th>Frente</th>
               <th>Início</th>
-              <th>Término</th> <!-- Nova coluna -->
+              <th>Término</th>
               <th>Visualizar</th>
             </tr>
           </thead>
@@ -32,16 +42,16 @@
   </div>
 
   <script src="utils.js"></script>
-  <script>
-    async function ensureSupabaseReady() {
-      return new Promise((resolve) => {
-        if (window.supabase) return resolve();
-        document.addEventListener('supabase-ready', () => resolve());
-      });
-    }
-
+   <script>
     document.addEventListener('DOMContentLoaded', async () => {
-    try {
+      try {
+        // Verifica autenticação
+        const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+        if (!currentUser) {
+          window.location.href = 'login.html';
+          return;
+        }
+
         await ensureSupabaseReady();
         applySavedTheme();
         document.getElementById('themeToggle').addEventListener('click', toggleTheme);
@@ -51,29 +61,38 @@
       }
     });
 
+    async function ensureSupabaseReady() {
+      return new Promise((resolve) => {
+        if (window.supabase) return resolve();
+        document.addEventListener('supabase-ready', () => resolve());
+      });
+    }
+
     async function loadCurrentVacations() {
       try {
         const today = new Date().toISOString().split('T')[0];
         
-        const { data: employees, error } = await supabase
+        // Busca funcionários em férias
+        const { data: employees, error: empError } = await supabase
           .from('employees')
           .select('*')
           .eq('on_vacation', true);
 
-        if (error) throw error;
+        if (empError) throw empError;
 
-        const { data: periods, error: periodsError } = await supabase
+        // Busca períodos de férias ativos
+        const { data: periods, error: perError } = await supabase
           .from('vacation_periods')
           .select('*')
-          .gte('end_date', today) // Férias que ainda não terminaram
-          .lte('start_date', today); // Férias que já começaram
+          .lte('start_date', today) // Já começou
+          .gte('end_date', today);  // Ainda não terminou
 
-        if (periodsError) throw periodsError;
+        if (perError) throw perError;
 
         const tbody = document.getElementById('vacationTable');
         tbody.innerHTML = '';
 
-        if (employees.length === 0 || periods.length === 0) {
+        if (!employees || employees.length === 0 || !periods || periods.length === 0) {
           tbody.innerHTML = `
             <tr>
               <td colspan="6" style="text-align: center;">
@@ -84,26 +103,27 @@
           return;
         }
 
-        // Combina dados de employees e periods
-        const activeVacations = employees.filter(emp => 
-          periods.some(p => p.employee_id === emp.id)
-        );
+        // Combina os dados
+        employees.forEach(emp => {
+          const empPeriods = periods.filter(p => p.employee_id === emp.id);
+          if (empPeriods.length === 0) return;
 
-        activeVacations.forEach(emp => {
-          const period = periods.find(p => p.employee_id === emp.id);
-          const endDate = new Date(period.start_date);
-          endDate.setDate(endDate.getDate() + period.days);
-          
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${emp.name || 'Não informado'}</td>
-            <td>${emp.matricula || 'N/A'}</td>
-            <td>${emp.team || 'N/A'}</td>
-            <td>${window.utils?.formatDate(period.start_date) || 'N/A'}</td>
-            <td>${window.utils?.formatDate(endDate) || 'N/A'}</td>
-            <td><a href="profile.html?id=${emp.id}" class="btn-view"><i class="fas fa-eye"></i> Ver</a></td>
-          `;
-          tbody.appendChild(tr);
+          empPeriods.forEach(period => {
+            const startDate = new Date(period.start_date);
+            const endDate = new Date(startDate);
+            endDate.setDate(startDate.getDate() + period.days);
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${emp.name || 'Não informado'}</td>
+              <td>${emp.matricula || 'N/A'}</td>
+              <td>${emp.team || 'N/A'}</td>
+              <td>${window.utils.formatDate(period.start_date) || 'N/A'}</td>
+              <td>${window.utils.formatDate(endDate) || 'N/A'}</td>
+              <td><a href="profile.html?id=${emp.id}" class="btn-view"><i class="fas fa-eye"></i> Ver</a></td>
+            `;
+            tbody.appendChild(tr);
+          });
         });
 
       } catch (error) {
