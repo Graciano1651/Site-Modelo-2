@@ -41,7 +41,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('employeeForm').reset();
       photoPreview.innerHTML = '<i class="fas fa-user"></i>';
       photoUrl = '';
+      document.getElementById('employeeId').value = '';
+      document.getElementById('saveButton').innerHTML = '<i class="fas fa-save"></i> Salvar Funcionário';
+      document.getElementById('newUserBtn').style.display = 'none';
     });
+
+    // Verifica se há ID para edição
+    const urlParams = new URLSearchParams(window.location.search);
+    const employeeId = urlParams.get('id') || localStorage.getItem('editEmployeeId');
+    
+    if (employeeId) {
+      await loadEmployeeForEdit(employeeId);
+      localStorage.removeItem('editEmployeeId');
+    }
 
     // Botão de salvar
     document.getElementById('saveButton').addEventListener('click', async (e) => {
@@ -49,6 +61,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       try {
         // Coleta dos dados
+        const id = document.getElementById('employeeId').value;
         const name = document.getElementById('name').value.trim();
         const matricula = document.getElementById('matricula').value.trim();
         const phone = document.getElementById('phone').value.trim();
@@ -72,15 +85,26 @@ document.addEventListener('DOMContentLoaded', async () => {
           status,
           team,
           last_vacation: lastVacation,
-          on_vacation: false,
           photo: photoUrl,
         };
 
-        // Chamada ao Supabase com headers de autenticação
-        const { data, error } = await supabase
-          .from('employees')
-          .insert([employeeData])
-          .select();
+        let data, error;
+        
+        if (id) {
+          // Atualizar funcionário existente
+          ({ data, error } = await supabase
+            .from('employees')
+            .update(employeeData)
+            .eq('id', id)
+            .select());
+        } else {
+          // Criar novo funcionário
+          employeeData.on_vacation = false;
+          ({ data, error } = await supabase
+            .from('employees')
+            .insert([employeeData])
+            .select());
+        }
 
         if (error) throw error;
 
@@ -88,11 +112,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('employeeForm').reset();
         photoPreview.innerHTML = '<i class="fas fa-user"></i>';
         photoUrl = '';
+        document.getElementById('employeeId').value = '';
+        document.getElementById('saveButton').innerHTML = '<i class="fas fa-save"></i> Salvar Funcionário';
+        document.getElementById('newUserBtn').style.display = 'none';
 
         // Mensagem de sucesso
         await Swal.fire({
           title: 'Sucesso!',
-          text: 'Funcionário cadastrado com sucesso.',
+          text: id ? 'Funcionário atualizado com sucesso.' : 'Funcionário cadastrado com sucesso.',
           icon: 'success',
           confirmButtonText: 'OK'
         });
@@ -106,12 +133,53 @@ document.addEventListener('DOMContentLoaded', async () => {
           title: 'Erro!',
           text: error.message.includes('row-level security') ? 
             'Permissão negada. Verifique as configurações de segurança no Supabase.' : 
-            'Não foi possível cadastrar o funcionário. ' + error.message,
+            'Não foi possível salvar o funcionário. ' + error.message,
           icon: 'error',
           confirmButtonText: 'OK'
         });
       }
     });
+
+    // Carrega funcionário para edição
+    async function loadEmployeeForEdit(id) {
+      try {
+        const { data: employee, error } = await supabase
+          .from('employees')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (error) throw error;
+        if (!employee) return;
+
+        // Preenche o formulário
+        document.getElementById('employeeId').value = employee.id;
+        document.getElementById('name').value = employee.name || '';
+        document.getElementById('matricula').value = employee.matricula || '';
+        document.getElementById('phone').value = employee.phone || '';
+        document.getElementById('hireDate').value = employee.hire_date || '';
+        document.getElementById('status').value = employee.status || '';
+        document.getElementById('team').value = employee.team || '';
+        document.getElementById('lastVacation').value = employee.last_vacation || '';
+
+        if (employee.photo) {
+          photoPreview.innerHTML = `<img src="${employee.photo}" alt="Preview">`;
+          photoUrl = employee.photo;
+        }
+
+        document.getElementById('saveButton').innerHTML = '<i class="fas fa-save"></i> Atualizar Funcionário';
+        document.getElementById('newUserBtn').style.display = 'block';
+
+      } catch (error) {
+        console.error('Erro ao carregar funcionário para edição:', error);
+        await Swal.fire({
+          title: 'Erro!',
+          text: 'Não foi possível carregar os dados do funcionário.',
+          icon: 'error',
+          confirmButtonText: 'OK'
+        });
+      }
+    }
 
     // Carrega a lista de funcionários
     async function loadEmployees() {
@@ -137,14 +205,64 @@ document.addEventListener('DOMContentLoaded', async () => {
             <td>
               <a href="profile.html?id=${emp.id}" class="btn-view"><i class="fas fa-eye"></i></a>
               <a href="cadastro.html?id=${emp.id}" class="btn-edit"><i class="fas fa-edit"></i></a>
+              <button class="btn-delete" data-id="${emp.id}"><i class="fas fa-trash"></i></button>
             </td>
           `;
           tbody.appendChild(tr);
         });
+
+        // Adiciona eventos de delete
+        document.querySelectorAll('.btn-delete').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const id = btn.getAttribute('data-id');
+            await deleteEmployee(id);
+          });
+        });
+
       } catch (error) {
         console.error('Erro ao carregar funcionários:', error);
       }
     }
+
+    // Função para deletar funcionário
+    async function deleteEmployee(id) {
+      try {
+        const { error } = await supabase
+          .from('employees')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        await Swal.fire({
+          title: 'Sucesso!',
+          text: 'Funcionário removido com sucesso.',
+          icon: 'success',
+          confirmButtonText: 'OK'
+        });
+
+        await loadEmployees();
+
+      } catch (error) {
+        console.error('Erro ao deletar funcionário:', error);
+        await Swal.fire({
+          title: 'Erro!',
+          text: 'Não foi possível remover o funcionário.',
+          icon: 'error',
+          confirmButtonText: 'OK'
+        });
+      }
+    }
+
+    // Botão Novo Usuário
+    document.getElementById('newUserBtn').addEventListener('click', () => {
+      document.getElementById('employeeForm').reset();
+      photoPreview.innerHTML = '<i class="fas fa-user"></i>';
+      photoUrl = '';
+      document.getElementById('employeeId').value = '';
+      document.getElementById('saveButton').innerHTML = '<i class="fas fa-save"></i> Salvar Funcionário';
+      document.getElementById('newUserBtn').style.display = 'none';
+    });
 
     // Inicialização
     await loadEmployees();
@@ -153,4 +271,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('Erro na inicialização:', error);
     window.location.href = 'login.html';
   }
- });
+});
