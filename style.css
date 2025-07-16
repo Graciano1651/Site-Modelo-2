@@ -818,3 +818,12 @@ body.dark-mode .modal-content {
 body.dark-mode .login-box .btn-theme {
   color: var(--success);
 }
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #d11a4a;
+}

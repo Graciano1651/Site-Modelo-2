@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<script src="supabase.js"></script>
+  <script src="supabase.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Cadastro de Funcionários</title>
@@ -20,7 +20,7 @@
         <a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
         <button id="themeToggle" class="btn-theme"><i class="fas fa-moon"></i></button>
       </div>
-  </div>
+    </div>
 
     <div class="content">
       <h1><i class="fas fa-user-edit"></i> Cadastro de Funcionário</h1>
@@ -120,6 +120,9 @@
           <button type="button" class="btn btn-primary" id="saveButton">
             <i class="fas fa-save"></i> Salvar Funcionário
           </button>
+          <button type="button" class="btn btn-danger" id="deleteBtn" style="display: none;">
+            <i class="fas fa-trash"></i> Deletar Funcionário
+          </button>
           <button type="button" class="btn btn-export" id="exportExcel">
             <i class="fas fa-file-excel"></i> Exportar Excel
           </button>
@@ -152,6 +155,7 @@
       </form>
     </div>
   </div>
+
   <div id="userModal" class="modal">
     <div class="modal-content">
       <span class="close">&times;</span>
@@ -182,6 +186,137 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="utils.js"></script>
-  <script src="form.js"></script>
+  <script>
+    // Variável para armazenar a URL da foto
+    let photoUrl = '';
+
+    // Carrega funcionário para edição
+    async function loadEmployeeForEdit() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const employeeId = urlParams.get('id');
+      if (!employeeId) return;
+
+      try {
+        const { data: employee, error } = await supabase
+          .from('employees')
+          .select('*')
+          .eq('id', employeeId)
+          .single();
+
+        if (error) throw error;
+
+        // Preenche o formulário
+        document.getElementById('employeeId').value = employee.id;
+        document.getElementById('name').value = employee.name || '';
+        document.getElementById('matricula').value = employee.matricula || '';
+        document.getElementById('phone').value = employee.phone || '';
+        document.getElementById('hireDate').value = employee.hire_date || '';
+        document.getElementById('status').value = employee.status || '';
+        document.getElementById('team').value = employee.team || '';
+        document.getElementById('lastVacation').value = employee.last_vacation || '';
+
+        // Foto do funcionário
+        if (employee.photo) {
+          document.getElementById('photoPreview').innerHTML = `<img src="${employee.photo}" alt="Foto do funcionário">`;
+          photoUrl = employee.photo;
+        }
+
+        // Mostra botões de controle
+        document.getElementById('newUserBtn').style.display = 'block';
+        document.getElementById('deleteBtn').style.display = 'block';
+
+      } catch (error) {
+        console.error('Erro ao carregar funcionário:', error);
+      }
+    }
+
+    // Função para deletar funcionário
+    async function deleteEmployee() {
+      const employeeId = document.getElementById('employeeId').value;
+      if (!employeeId) return;
+
+      const result = await Swal.fire({
+        title: 'Tem certeza?',
+        text: "Você não poderá reverter isso!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sim, deletar!'
+      });
+
+      if (result.isConfirmed) {
+        try {
+          // Deleta períodos de férias primeiro
+          await supabase.from('vacation_periods').delete().eq('employee_id', employeeId);
+          
+          // Depois deleta o funcionário
+          const { error } = await supabase.from('employees').delete().eq('id', employeeId);
+          if (error) throw error;
+
+          await Swal.fire('Deletado!', 'Funcionário removido com sucesso.', 'success');
+          
+          // Limpa o formulário
+          document.getElementById('employeeForm').reset();
+          document.getElementById('photoPreview').innerHTML = '<i class="fas fa-user"></i>';
+          photoUrl = '';
+          document.getElementById('employeeId').value = '';
+          document.getElementById('deleteBtn').style.display = 'none';
+          
+          // Atualiza a lista
+          if (window.loadEmployees) loadEmployees();
+
+        } catch (error) {
+          console.error('Erro ao deletar:', error);
+          Swal.fire('Erro!', 'Não foi possível deletar o funcionário.', 'error');
+        }
+      }
+    }
+
+    // Evento para novo usuário
+    document.getElementById('newUserBtn').addEventListener('click', () => {
+      document.getElementById('employeeForm').reset();
+      document.getElementById('photoPreview').innerHTML = '<i class="fas fa-user"></i>';
+      photoUrl = '';
+      document.getElementById('employeeId').value = '';
+      document.getElementById('newUserBtn').style.display = 'none';
+      document.getElementById('deleteBtn').style.display = 'none';
+    });
+
+    // Evento para deletar
+    document.getElementById('deleteBtn').addEventListener('click', deleteEmployee);
+
+    // Inicialização
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        await ensureSupabaseReady();
+        
+        // Verifica autenticação
+        const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+        if (!currentUser) {
+          window.location.href = 'login.html';
+          return;
+        }
+
+        // Carrega funcionário para edição se houver ID
+        await loadEmployeeForEdit();
+
+        // Restante da inicialização existente...
+        if (window.loadEmployees) await loadEmployees();
+
+      } catch (error) {
+        console.error('Erro na inicialização:', error);
+        window.location.href = 'login.html';
+      }
+    });
+
+    // Função auxiliar para garantir que o Supabase está pronto
+    async function ensureSupabaseReady() {
+      return new Promise((resolve) => {
+        if (window.supabase) return resolve();
+        document.addEventListener('supabase-ready', () => resolve());
+      });
+    }
+  </script>
 </body>
- </html>
+</html>
