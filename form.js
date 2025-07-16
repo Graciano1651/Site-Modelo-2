@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const reader = new FileReader();
         reader.onload = (e) => {
           photoPreview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+          photoUrl = e.target.result;
         };
         reader.readAsDataURL(file);
       }
@@ -48,96 +49,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Verifica se há ID para edição
     const urlParams = new URLSearchParams(window.location.search);
-    const employeeId = urlParams.get('id') || localStorage.getItem('editEmployeeId');
-    
+    const employeeId = urlParams.get('id');
+
     if (employeeId) {
-      await loadEmployeeForEdit(employeeId);
-      localStorage.removeItem('editEmployeeId');
+   await loadEmployeeForEdit(employeeId);
     }
 
     // Botão de salvar
     document.getElementById('saveButton').addEventListener('click', async (e) => {
       e.preventDefault();
-      
-      try {
-        // Coleta dos dados
-        const id = document.getElementById('employeeId').value;
-        const name = document.getElementById('name').value.trim();
-        const matricula = document.getElementById('matricula').value.trim();
-        const phone = document.getElementById('phone').value.trim();
-        const hireDate = document.getElementById('hireDate').value;
-        const status = document.getElementById('status').value;
-        const team = document.getElementById('team').value;
-        const lastVacation = document.getElementById('lastVacation').value || null;
-
-        // Validação
-        if (!name || !matricula || !hireDate || !status || !team) {
-          await Swal.fire('Atenção!', 'Preencha todos os campos obrigatórios.', 'warning');
-          return;
-        }
-
-        // Dados do funcionário
-        const employeeData = {
-          name,
-          matricula,
-          phone,
-          hire_date: hireDate,
-          status,
-          team,
-          last_vacation: lastVacation,
-          photo: photoUrl,
-        };
-
-        let data, error;
-        
-        if (id) {
-          // Atualizar funcionário existente
-          ({ data, error } = await supabase
-            .from('employees')
-            .update(employeeData)
-            .eq('id', id)
-            .select());
-        } else {
-          // Criar novo funcionário
-          employeeData.on_vacation = false;
-          ({ data, error } = await supabase
-            .from('employees')
-            .insert([employeeData])
-            .select());
-        }
-
-        if (error) throw error;
-
-        // Limpeza do formulário
-        document.getElementById('employeeForm').reset();
-        photoPreview.innerHTML = '<i class="fas fa-user"></i>';
-        photoUrl = '';
-        document.getElementById('employeeId').value = '';
-        document.getElementById('saveButton').innerHTML = '<i class="fas fa-save"></i> Salvar Funcionário';
-        document.getElementById('newUserBtn').style.display = 'none';
-
-        // Mensagem de sucesso
-        await Swal.fire({
-          title: 'Sucesso!',
-          text: id ? 'Funcionário atualizado com sucesso.' : 'Funcionário cadastrado com sucesso.',
-          icon: 'success',
-          confirmButtonText: 'OK'
-        });
-
-        // Atualiza a lista
-        await loadEmployees();
-
-      } catch (error) {
-        console.error('Erro ao salvar funcionário:', error);
-        await Swal.fire({
-          title: 'Erro!',
-          text: error.message.includes('row-level security') ? 
-            'Permissão negada. Verifique as configurações de segurança no Supabase.' : 
-            'Não foi possível salvar o funcionário. ' + error.message,
-          icon: 'error',
-          confirmButtonText: 'OK'
-        });
-      }
+      await saveEmployee();
     });
 
     // Carrega funcionário para edição
@@ -181,7 +102,86 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
-    // Carrega a lista de funcionários
+    // Salva ou atualiza funcionário
+    async function saveEmployee() {
+      try {
+        const id = document.getElementById('employeeId').value;
+        const name = document.getElementById('name').value.trim();
+        const matricula = document.getElementById('matricula').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        const hireDate = document.getElementById('hireDate').value;
+        const status = document.getElementById('status').value;
+        const team = document.getElementById('team').value;
+        const lastVacation = document.getElementById('lastVacation').value || null;
+
+        // Validação
+        if (!name || !matricula || !hireDate || !status || !team) {
+          await Swal.fire('Atenção!', 'Preencha todos os campos obrigatórios.', 'warning');
+          return;
+        }
+
+         const employeeData = {
+          name,
+          matricula,
+          phone,
+          hire_date: hireDate,
+          status,
+          team,
+          last_vacation: lastVacation,
+          photo: photoUrl
+        };
+
+        let result;
+        if (id) {
+          // Atualiza funcionário existente
+          result = await supabase
+            .from('employees')
+            .update(employeeData)
+            .eq('id', id)
+            .select();
+        } else {
+          // Cria novo funcionário
+          employeeData.on_vacation = false;
+          result = await supabase
+            .from('employees')
+            .insert([employeeData])
+            .select();
+        }
+
+        if (result.error) throw result.error;
+
+        // Feedback ao usuário
+        await Swal.fire({
+          title: 'Sucesso!',
+          text: id ? 'Funcionário atualizado com sucesso.' : 'Funcionário cadastrado com sucesso.',
+          icon: 'success',
+          confirmButtonText: 'OK'
+        });
+
+        // Limpa formulário após sucesso
+        if (!id) {
+          document.getElementById('employeeForm').reset();
+          photoPreview.innerHTML = '<i class="fas fa-user"></i>';
+          photoUrl = '';
+        }
+
+        // Atualiza lista
+        await loadEmployees();
+
+      } catch (error) {
+        console.error('Erro ao salvar funcionário:', error);
+        await Swal.fire({
+          title: 'Erro!',
+          text: error.message.includes('row-level security') ? 
+            'Permissão negada. Verifique as configurações de segurança no Supabase.' : 
+            'Não foi possível salvar o funcionário. ' + error.message,
+          icon: 'error',
+          confirmButtonText: 'OK'
+        });
+      }
+    }
+
+    // Carrega lista de funcionários
     async function loadEmployees() {
       try {
         const { data: employees, error } = await supabase
@@ -215,16 +215,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelectorAll('.btn-delete').forEach(btn => {
           btn.addEventListener('click', async () => {
             const id = btn.getAttribute('data-id');
-            await deleteEmployee(id);
+            const { isConfirmed } = await Swal.fire({
+              title: 'Confirmar exclusão',
+              text: 'Tem certeza que deseja excluir este funcionário?',
+              icon: 'warning',
+              showCancelButton: true,
+              confirmButtonText: 'Sim, excluir',
+              cancelButtonText: 'Cancelar'
+            });
+
+            if (isConfirmed) {
+              await deleteEmployee(id);
+            }
           });
         });
 
       } catch (error) {
         console.error('Erro ao carregar funcionários:', error);
+        const tbody = document.getElementById('employeesList');
+        tbody.innerHTML = '<tr><td colspan="6">Erro ao carregar lista de funcionários</td></tr>';
       }
     }
 
-    // Função para deletar funcionário
+    // Deleta funcionário
     async function deleteEmployee(id) {
       try {
         const { error } = await supabase

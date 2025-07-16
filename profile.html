@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
- <head>
+<head>
   <script src="supabase.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -30,6 +30,7 @@
   </div>
 
   <script src="utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       try {
@@ -40,106 +41,135 @@
           return;
         }
 
+        await ensureSupabaseReady();
         applySavedTheme();
         document.getElementById('themeToggle').addEventListener('click', toggleTheme);
         
-        const id = new URLSearchParams(window.location.search).get("id");
-        if (!id) {
-          document.getElementById('profileContent').innerHTML = '<p>ID do funcionário não especificado.</p>';
-          return;
-        }
-
-        // Carrega dados do funcionário
-        const { data: employee, error: empError } = await supabase
-          .from('employees')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        if (empError || !employee) {
-          document.getElementById('profileContent').innerHTML = '<p>Funcionário não encontrado.</p>';
-          return;
-        }
-
-        // Carrega períodos de férias
-        const { data: periods, error: periodsError } = await supabase
-          .from('vacation_periods')
-          .select('*')
-          .eq('employee_id', id)
-          .order('start_date', { ascending: true });
-
-        // Renderiza o perfil
-        renderProfile(employee, periods || []);
-
+        // Configura botão de edição
         document.getElementById('editBtn').addEventListener('click', () => {
-          localStorage.setItem('editEmployeeId', id);
-          window.location.href = "cadastro.html";
+          const id = new URLSearchParams(window.location.search).get("id");
+          if (id) {
+            window.location.href = `cadastro.html?id=${id}`;
+          } else {
+            Swal.fire('Erro', 'ID do funcionário não encontrado', 'error');
+          }
         });
 
+        await renderProfile();
+
       } catch (error) {
-        console.error('Erro ao carregar perfil:', error);
-        document.getElementById('profileContent').innerHTML = 
-          '<p style="color: var(--danger);">Erro ao carregar perfil do funcionário.</p>';
+        console.error('Erro na inicialização:', error);
+        document.getElementById('profileContent').innerHTML = `
+          <div class="error-message">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>Erro ao carregar perfil do funcionário</p>
+          </div>
+        `;
       }
     });
 
-    function renderProfile(emp, periods) {
-      const status = emp.on_vacation ? "Em Férias" : window.utils.calcDisponibilidade(emp.hire_date, emp.last_vacation) ? "Disponível" : "Indisponível";
-      const today = new Date();
+    async function ensureSupabaseReady() {
+      return new Promise((resolve) => {
+        if (window.supabase) return resolve();
+        document.addEventListener('supabase-ready', () => resolve());
+      });
+    }
+
+    async function renderProfile() {
+      const id = new URLSearchParams(window.location.search).get("id");
+      if (!id) {
+        throw new Error('ID do funcionário não especificado');
+      }
+
+      // Mostrar loading
+      document.getElementById('profileContent').innerHTML = `
+        <div class="loading">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p>Carregando perfil...</p>
+        </div>
+      `;
+
+      // Buscar dados do funcionário
+      const { data: emp, error: empError } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (empError || !emp) {
+        throw new Error('Funcionário não encontrado');
+      }
+
+      // Buscar períodos de férias
+      const { data: periods, error: periodsError } = await supabase
+        .from('vacation_periods')
+        .select('*')
+        .eq('employee_id', id)
+        .order('start_date', { ascending: true });
+
+      if (periodsError) {
+        console.error('Erro ao carregar períodos de férias:', periodsError);
+      }
+
+      // Renderizar perfil
+      const status = emp.on_vacation ? "Em Férias" : 
+                    window.utils.calcDisponibilidade(emp.hire_date, emp.last_vacation) ? 
+                    "Disponível" : "Indisponível";
       
-      // Encontrar período ativo de férias
-      let activePeriod = null;
-      if (periods && periods.length > 0) {
+      const today = new Date();
+       let activePeriod = null;
+      let progressHTML = '';
+
+      if (periods) {
         activePeriod = periods.find(p => {
           const start = new Date(p.start_date);
           const end = new Date(start);
           end.setDate(start.getDate() + p.days);
           return today >= start && today <= end;
-        });
-      }
+         });
 
-      let progressHTML = '';
-      if (activePeriod) {
-        const start = new Date(activePeriod.start_date);
-        const end = new Date(start);
-        end.setDate(start.getDate() + activePeriod.days);
-        const daysPassed = Math.floor((today - start) / 86400000) + 1;
-        const daysRemaining = activePeriod.days - daysPassed;
-        const progress = Math.min(100, (daysPassed / activePeriod.days) * 100);
+        if (activePeriod) {
+          const start = new Date(activePeriod.start_date);
+          const end = new Date(start);
+          end.setDate(start.getDate() + activePeriod.days);
+          const daysPassed = Math.floor((today - start) / 86400000) + 1;
+          const daysRemaining = activePeriod.days - daysPassed;
+          const progress = Math.min(100, (daysPassed / activePeriod.days) * 100);
 
-        progressHTML = `
-          <h2><i class='fas fa-chart-line'></i> Progresso das Férias</h2>
-          <div class="progress-container">
-            <div class="progress-header">
-              <span>${window.utils.formatDate(start)}</span>
-              <span>${window.utils.formatDate(end)}</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width:${progress}%; background: linear-gradient(90deg, var(--primary), var(--success));">
-                ${progress.toFixed(0)}%
+          progressHTML = `
+            <h2><i class='fas fa-chart-line'></i> Progresso das Férias</h2>
+            <div class="progress-container">
+              <div class="progress-header">
+                <span>${window.utils.formatDate(start)}</span>
+                <span>${window.utils.formatDate(end)}</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill" style="width:${progress}%;">
+                  ${progress.toFixed(0)}%
+                </div>
               </div>
             </div>
-          </div>
-          <div class="vacation-stats">
-            <div class="stat">
-              <h3>Dias Decorridos</h3>
-              <p class="days-passed">${daysPassed}</p>
-            </div>
-            <div class="stat">
-              <h3>Dias Restantes</h3>
-              <p class="days-remaining">${daysRemaining}</p>
-            </div>
-          </div>`;
+            <div class="vacation-stats">
+              <div class="stat">
+                <h3>Dias Decorridos</h3>
+                <p class="days-passed">${daysPassed}</p>
+              </div>
+              <div class="stat">
+                <h3>Dias Restantes</h3>
+                <p class="days-remaining">${daysRemaining}</p>
+              </div>
+            </div>`;
+        }
       }
 
-      // Gerar histórico de férias
+      // Histórico
       let historyHTML = `
         <div class="timeline-item">
           <div class="timeline-date">${window.utils.formatDate(emp.hire_date)}</div>
           <div class="timeline-content">Contratação</div>
         </div>`;
 
-      if (periods && periods.length > 0) {
+      if (periods) {
         historyHTML += periods.map(p => `
           <div class="timeline-item">
             <div class="timeline-date">${window.utils.formatDate(p.start_date)}</div>
@@ -148,7 +178,7 @@
         `).join('');
       }
 
-      // Montar o HTML completo
+      // Montar HTML final
       document.getElementById('profileContent').innerHTML = `
         <div class="profile-header">
           <div class="profile-photo">
@@ -162,7 +192,10 @@
               <div class="detail-item"><i class="fas fa-users"></i> Frente ${emp.team}</div>
               <div class="detail-item">
                 <i class="fas fa-clock"></i>
-                <span class="badge ${emp.on_vacation ? 'badge-success' : (window.utils.calcDisponibilidade(emp.hire_date, emp.last_vacation) ? 'badge-primary' : 'badge-warning')}">${status}</span>
+                <span class="badge ${emp.on_vacation ? 'badge-success' : 
+                  (window.utils.calcDisponibilidade(emp.hire_date, emp.last_vacation)) ? 'badge-primary' : 'badge-warning'}">
+                  ${status}
+                </span>
               </div>
             </div>
           </div>
@@ -188,4 +221,4 @@
     }
   </script>
 </body>
- </html>
+</html>
