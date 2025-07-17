@@ -230,6 +230,94 @@
       }
     }
 
+    // Função para salvar funcionário
+    async function saveEmployee() {
+      try {
+        const employeeId = document.getElementById('employeeId').value;
+        const name = document.getElementById('name').value;
+        const matricula = document.getElementById('matricula').value;
+        const phone = document.getElementById('phone').value;
+        const hireDate = document.getElementById('hireDate').value;
+        const status = document.getElementById('status').value;
+        const team = document.getElementById('team').value;
+        const lastVacation = document.getElementById('lastVacation').value || null;
+
+        // Validação básica
+        if (!name || !matricula || !hireDate || !status || !team) {
+          await Swal.fire({
+            title: 'Campos obrigatórios',
+            text: 'Preencha todos os campos obrigatórios',
+            icon: 'warning'
+          });
+          return;
+        }
+
+        const employeeData = {
+          name,
+          matricula,
+          phone,
+          hire_date: hireDate,
+          status,
+          team,
+          last_vacation: lastVacation,
+          photo: photoUrl || null,
+          updated_at: new Date().toISOString()
+        };
+
+        // Mostrar loading
+        const saveButton = document.getElementById('saveButton');
+        const originalText = saveButton.innerHTML;
+        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+        saveButton.disabled = true;
+
+        let result;
+        if (employeeId) {
+          // Atualização
+          result = await supabase
+            .from('employees')
+            .update(employeeData)
+            .eq('id', employeeId);
+        } else {
+          // Inserção
+          employeeData.created_at = new Date().toISOString();
+          employeeData.on_vacation = false;
+          result = await supabase
+            .from('employees')
+            .insert([employeeData]);
+        }
+
+        if (result.error) throw result.error;
+
+        await Swal.fire({
+          title: 'Sucesso!',
+          text: employeeId ? 'Funcionário atualizado com sucesso!' : 'Funcionário cadastrado com sucesso!',
+          icon: 'success'
+        });
+
+        // Limpar formulário se for novo cadastro
+        if (!employeeId) {
+          document.getElementById('employeeForm').reset();
+          document.getElementById('photoPreview').innerHTML = '<i class="fas fa-user"></i>';
+          photoUrl = '';
+        }
+
+        // Atualizar lista
+        if (window.loadEmployees) await loadEmployees();
+
+      } catch (error) {
+        console.error('Erro ao salvar funcionário:', error);
+        await Swal.fire({
+          title: 'Erro!',
+          text: 'Não foi possível salvar o funcionário. Verifique o console para detalhes.',
+          icon: 'error'
+        });
+      } finally {
+        const saveButton = document.getElementById('saveButton');
+        saveButton.innerHTML = originalText || '<i class="fas fa-save"></i> Salvar Funcionário';
+        saveButton.disabled = false;
+      }
+    }
+
     // Função para deletar funcionário
     async function deleteEmployee() {
       const employeeId = document.getElementById('employeeId').value;
@@ -285,6 +373,9 @@
 
     // Evento para deletar
     document.getElementById('deleteBtn').addEventListener('click', deleteEmployee);
+
+    // Evento para salvar
+    document.getElementById('saveButton').addEventListener('click', saveEmployee);
 
     // Inicialização
     document.addEventListener('DOMContentLoaded', async () => {

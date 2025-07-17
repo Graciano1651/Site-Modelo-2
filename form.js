@@ -52,38 +52,99 @@ document.addEventListener('DOMContentLoaded', async () => {
     const employeeId = urlParams.get('id');
 
     if (employeeId) {
-   await loadEmployeeForEdit(employeeId);
+      await loadEmployeeForEdit(employeeId);
     }
 
-    // Botão de salvar
-    document.getElementById('saveButton').addEventListener('click', async (e) => {
-  e.preventDefault();
-  
-  // 1. Adiciona visual de carregamento
-  const saveButton = e.currentTarget;
-  const originalText = saveButton.innerHTML;
-  saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
-  saveButton.disabled = true;
-  
-  try {
-    // 2. Executa a função de salvar
-    await saveEmployee();
-    
-  } catch (error) {
-    // 3. Trata erros não capturados
-    console.error('Erro não tratado:', error);
-    Swal.fire({
-      title: 'Erro inesperado',
-      text: 'Ocorreu um problema ao salvar. Verifique o console para detalhes.',
-      icon: 'error'
-    });
-    
-  } finally {
-    // 4. Restaura o botão (executa sempre, mesmo com erro)
-    saveButton.innerHTML = originalText;
-    saveButton.disabled = false;
-  }
-});
+    // Função para salvar funcionário
+    async function saveEmployee() {
+      try {
+        const id = document.getElementById('employeeId').value;
+        const name = document.getElementById('name').value.trim();
+        const matricula = document.getElementById('matricula').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        const hireDate = document.getElementById('hireDate').value;
+        const status = document.getElementById('status').value;
+        const team = document.getElementById('team').value;
+        const lastVacation = document.getElementById('lastVacation').value || null;
+
+        // Validação básica
+        if (!name || !matricula || !hireDate || !status || !team) {
+          await Swal.fire({
+            title: 'Campos obrigatórios',
+            text: 'Preencha todos os campos obrigatórios',
+            icon: 'warning'
+          });
+          return;
+        }
+
+        const employeeData = {
+          name,
+          matricula,
+          phone,
+          hire_date: hireDate,
+          status,
+          team,
+          last_vacation: lastVacation,
+          photo: photoUrl || null,
+          updated_at: new Date().toISOString()
+        };
+
+        // Mostrar loading
+        const saveButton = document.getElementById('saveButton');
+        const originalText = saveButton.innerHTML;
+        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+        saveButton.disabled = true;
+
+        let result;
+        if (id) {
+          // Atualização
+          result = await supabase
+            .from('employees')
+            .update(employeeData)
+            .eq('id', id);
+        } else {
+          // Inserção
+          employeeData.created_at = new Date().toISOString();
+          employeeData.on_vacation = false;
+          result = await supabase
+            .from('employees')
+            .insert([employeeData]);
+        }
+
+        if (result.error) throw result.error;
+
+        await Swal.fire({
+          title: 'Sucesso!',
+          text: id ? 'Funcionário atualizado com sucesso!' : 'Funcionário cadastrado com sucesso!',
+          icon: 'success'
+        });
+
+        // Limpar formulário se for novo cadastro
+        if (!id) {
+          document.getElementById('employeeForm').reset();
+          document.getElementById('photoPreview').innerHTML = '<i class="fas fa-user"></i>';
+          photoUrl = '';
+        }
+
+        // Atualizar lista
+        await loadEmployees();
+
+      } catch (error) {
+        console.error('Erro ao salvar funcionário:', error);
+        await Swal.fire({
+          title: 'Erro!',
+          text: 'Não foi possível salvar o funcionário. Verifique o console para detalhes.',
+          icon: 'error'
+        });
+      } finally {
+        const saveButton = document.getElementById('saveButton');
+        saveButton.innerHTML = originalText || '<i class="fas fa-save"></i> Salvar Funcionário';
+        saveButton.disabled = false;
+      }
+    }
+
+    // Configurar evento de clique no botão salvar
+    document.getElementById('saveButton').addEventListener('click', saveEmployee);
 
     // Carrega funcionário para edição
     async function loadEmployeeForEdit(id) {
@@ -125,121 +186,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
       }
     }
-
-    // Salva ou atualiza funcionário
-    async function saveEmployee() {
-  try {
-    // 1. Coletar dados do formulário
-    const id = document.getElementById('employeeId').value;
-    const name = document.getElementById('name').value.trim();
-    const matricula = document.getElementById('matricula').value.trim();
-    const phone = document.getElementById('phone').value.trim();
-    const hireDate = document.getElementById('hireDate').value;
-    const status = document.getElementById('status').value;
-    const team = document.getElementById('team').value;
-    const lastVacation = document.getElementById('lastVacation').value || null;
-
-    // 2. Validação dos campos obrigatórios
-    if (!name || !matricula || !hireDate || !status || !team) {
-      await Swal.fire({
-        title: 'Campos obrigatórios',
-        text: 'Preencha todos os campos marcados como obrigatórios',
-        icon: 'warning',
-        confirmButtonText: 'Entendi'
-      });
-      return;
-    }
-
-    // 3. Preparar os dados para envio
-    const employeeData = {
-      name,
-      matricula,
-      phone,
-      hire_date: hireDate,
-      status,
-      team,
-      last_vacation: lastVacation,
-      photo: photoUrl || null,
-      updated_at: new Date().toISOString()
-    };
-
-    // 4. Mostrar loading
-    Swal.fire({
-      title: 'Salvando...',
-      html: 'Por favor, aguarde enquanto atualizamos os dados',
-      allowOutsideClick: false,
-      didOpen: () => {
-        Swal.showLoading();
-      }
-    });
-
-    // 5. Enviar para o Supabase
-    let result;
-    if (id) {
-      // Atualização de funcionário existente
-      result = await supabase
-        .from('employees')
-        .update(employeeData)
-        .eq('id', id)
-        .select();
-    } else {
-      // Cadastro de novo funcionário
-      employeeData.on_vacation = false;
-      employeeData.created_at = new Date().toISOString();
-      result = await supabase
-        .from('employees')
-        .insert([employeeData])
-        .select();
-    }
-
-    // 6. Verificar erros
-    if (result.error) {
-      throw result.error;
-    }
-
-    // 7. Feedback visual de sucesso
-    Swal.fire({
-      title: 'Sucesso!',
-      icon: 'success',
-      html: `
-        <div style="text-align:left">
-          <p><strong>${id ? 'Atualizado' : 'Cadastrado'} com sucesso!</strong></p>
-          <p>Nome: ${name}</p>
-          <p>Matrícula: ${matricula}</p>
-          <p>Time: ${team}</p>
-        </div>
-      `,
-      confirmButtonText: 'OK',
-      willClose: () => {
-        // 8. Atualizar lista e limpar formulário se for novo cadastro
-        loadEmployees();
-        if (!id) {
-          document.getElementById('employeeForm').reset();
-          document.getElementById('photoPreview').innerHTML = '<i class="fas fa-user"></i>';
-          photoUrl = '';
-        }
-      }
-    });
-
-  } catch (error) {
-    console.error('Erro ao salvar funcionário:', error);
-    
-    // 9. Feedback visual de erro
-    Swal.fire({
-      title: 'Erro ao salvar',
-      icon: 'error',
-      html: `
-        <div style="text-align:left">
-          <p>Não foi possível ${id ? 'atualizar' : 'cadastrar'} o funcionário.</p>
-          <p><strong>Erro:</strong> ${error.message}</p>
-          ${error.message.includes('permission') ? 
-            '<p>Verifique suas permissões no Supabase</p>' : ''}
-        </div>
-      `,
-      confirmButtonText: 'Entendi'
-    });
-  }
-}
 
     // Carrega lista de funcionários
     async function loadEmployees() {
@@ -299,77 +245,80 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Deleta funcionário
     async function deleteEmployee(id) {
-  try {
-    // Primeiro verifica se o funcionário existe
-    const { data: employee, error: fetchError } = await supabase
-      .from('employees')
-      .select('*')
-      .eq('id', id)
-      .single();
+      try {
+        // Primeiro verifica se o funcionário existe
+        const { data: employee, error: fetchError } = await supabase
+          .from('employees')
+          .select('*')
+          .eq('id', id)
+          .single();
 
-    if (fetchError || !employee) {
-      throw new Error('Funcionário não encontrado');
-    }
+        if (fetchError || !employee) {
+          throw new Error('Funcionário não encontrado');
+        }
 
-    // Confirmação adicional
-    const { isConfirmed } = await Swal.fire({
-      title: `Excluir ${employee.name}?`,
-      text: `Matrícula: ${employee.matricula}`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Sim, excluir permanentemente',
-      cancelButtonText: 'Cancelar'
-    });
+        // Confirmação adicional
+        const { isConfirmed } = await Swal.fire({
+          title: `Excluir ${employee.name}?`,
+          text: `Matrícula: ${employee.matricula}`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Sim, excluir permanentemente',
+          cancelButtonText: 'Cancelar'
+        });
 
-    if (!isConfirmed) return;
+        if (!isConfirmed) return;
 
-    // Deleta o funcionário
-    const { error: deleteError } = await supabase
-      .from('employees')
-      .delete()
-      .eq('id', id);
+        // Deleta o funcionário
+        const { error: deleteError } = await supabase
+          .from('employees')
+          .delete()
+          .eq('id', id);
 
-    if (deleteError) throw deleteError;
+        if (deleteError) throw deleteError;
 
-    // Feedback visual
-    const toast = Swal.mixin({
-      toast: true,
-      position: 'top-end',
-      showConfirmButton: false,
-      timer: 3000,
-      timerProgressBar: true,
-      didOpen: (toast) => {
-        toast.addEventListener('mouseenter', Swal.stopTimer);
-        toast.addEventListener('mouseleave', Swal.resumeTimer);
+        // Feedback visual
+        const toast = Swal.mixin({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true,
+          didOpen: (toast) => {
+            toast.addEventListener('mouseenter', Swal.stopTimer);
+            toast.addEventListener('mouseleave', Swal.resumeTimer);
+          }
+        });
+
+        await toast.fire({
+          icon: 'success',
+          title: `${employee.name} excluído com sucesso`
+        });
+
+        // Atualiza a lista e limpa o formulário se estiver editando o funcionário deletado
+        const currentId = document.getElementById('employeeId').value;
+        if (currentId === id) {
+          document.getElementById('employeeForm').reset();
+          document.getElementById('photoPreview').innerHTML = '<i class="fas fa-user"></i>';
+          photoUrl = '';
+          document.getElementById('employeeId').value = '';
+          document.getElementById('deleteBtn').style.display = 'none';
+        }
+        
+        await loadEmployees();
+
+      } catch (error) {
+        console.error('Erro ao deletar funcionário:', error);
+        await Swal.fire({
+          title: 'Erro!',
+          html: `Não foi possível excluir o funcionário.<br><br>
+                <small>${error.message}</small>`,
+          icon: 'error'
+        });
       }
-    });
-
-    await toast.fire({
-      icon: 'success',
-      title: `${employee.name} excluído com sucesso`
-    });
-
-    // Atualiza a lista e limpa o formulário se estiver editando o funcionário deletado
-    const currentId = document.getElementById('employeeId').value;
-    if (currentId === id) {
-      resetForm();
     }
-    
-    await loadEmployees();
-
-  } catch (error) {
-    console.error('Erro ao deletar funcionário:', error);
-    
-    await Swal.fire({
-      title: 'Erro!',
-      html: `Não foi possível excluir o funcionário.<br><br>
-             <small>${error.message}</small>`,
-      icon: 'error'
-    });
-  }
-}
 
     // Botão Novo Usuário
     document.getElementById('newUserBtn').addEventListener('click', () => {
