@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await loadEmployeeForEdit(employeeId);
     }
 
-    // Função para salvar funcionário
+    // Função para salvar funcionário - VERSÃO CORRIGIDA
     async function saveEmployee() {
       try {
         const id = document.getElementById('employeeId').value;
@@ -67,20 +67,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         const team = document.getElementById('team').value;
         const lastVacation = document.getElementById('lastVacation').value || null;
 
-        // Validação básica
-        if (!name || !matricula || !hireDate || !status || !team) {
-          await Swal.fire({
-            title: 'Campos obrigatórios',
-            text: 'Preencha todos os campos obrigatórios',
-            icon: 'warning'
-          });
-          return;
-        }
+        // Validação reforçada
+        if (!name) throw new Error('Nome é obrigatório');
+        if (!matricula) throw new Error('Matrícula é obrigatória');
+        if (!hireDate) throw new Error('Data de contratação é obrigatória');
+        if (!status) throw new Error('Status é obrigatório');
+        if (!team) throw new Error('Frente de trabalho é obrigatória');
 
         const employeeData = {
           name,
           matricula,
-          phone,
+          phone: phone || null, // Garante que seja null se vazio
           hire_date: hireDate,
           status,
           team,
@@ -101,17 +98,22 @@ document.addEventListener('DOMContentLoaded', async () => {
           result = await supabase
             .from('employees')
             .update(employeeData)
-            .eq('id', id);
+            .eq('id', id)
+            .select(); // Adicionado .select() para retornar os dados
         } else {
           // Inserção
           employeeData.created_at = new Date().toISOString();
           employeeData.on_vacation = false;
           result = await supabase
             .from('employees')
-            .insert([employeeData]);
+            .insert([employeeData])
+            .select(); // Adicionado .select() para retornar os dados
         }
 
-        if (result.error) throw result.error;
+        if (result.error) {
+          console.error('Erro detalhado:', result.error);
+          throw new Error(result.error.message || 'Erro ao salvar funcionário');
+        }
 
         await Swal.fire({
           title: 'Sucesso!',
@@ -130,16 +132,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadEmployees();
 
       } catch (error) {
-        console.error('Erro ao salvar funcionário:', error);
+        console.error('Erro detalhado ao salvar funcionário:', error);
         await Swal.fire({
           title: 'Erro!',
-          text: 'Não foi possível salvar o funcionário. Verifique o console para detalhes.',
+          html: `<div style="text-align:left">
+                  <p><strong>Não foi possível salvar o funcionário</strong></p>
+                  <p>Erro: ${error.message}</p>
+                  ${error.details ? `<p>Detalhes: ${error.details}</p>` : ''}
+                </div>`,
           icon: 'error'
         });
       } finally {
         const saveButton = document.getElementById('saveButton');
-        saveButton.innerHTML = originalText || '<i class="fas fa-save"></i> Salvar Funcionário';
-        saveButton.disabled = false;
+        if (saveButton) {
+          saveButton.innerHTML = originalText || '<i class="fas fa-save"></i> Salvar Funcionário';
+          saveButton.disabled = false;
+        }
       }
     }
 

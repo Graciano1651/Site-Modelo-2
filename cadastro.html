@@ -30,27 +30,27 @@
 
         <div class="form-group">
           <label for="name"><i class="fas fa-user"></i> Nome Completo</label>
-          <input type="text" id="name" class="form-control" required />
+          <input type="text" id="name" class="form-control" required autocomplete="name" />
         </div>
 
         <div class="form-group">
           <label for="matricula"><i class="fas fa-id-card"></i> Matrícula</label>
-          <input type="text" id="matricula" class="form-control" required />
+          <input type="text" id="matricula" class="form-control" required autocomplete="username" />
         </div>
 
         <div class="form-group">
           <label for="phone"><i class="fas fa-phone"></i> Telefone</label>
-          <input type="tel" id="phone" class="form-control" required />
+          <input type="tel" id="phone" class="form-control" required autocomplete="tel" />
         </div>
 
         <div class="form-group">
           <label for="hireDate"><i class="fas fa-calendar-alt"></i> Data de Contratação</label>
-          <input type="date" id="hireDate" class="form-control" required />
+          <input type="date" id="hireDate" class="form-control" required autocomplete="off" />
         </div>
 
         <div class="form-group">
           <label for="status"><i class="fas fa-user-tag"></i> Status</label>
-          <select id="status" class="form-control" required>
+          <select id="status" class="form-control" required autocomplete="off">
             <option value="">Selecione...</option>
             <option value="staff">Staff</option>
             <option value="operacional">Operacional</option>
@@ -61,7 +61,7 @@
 
         <div class="form-group">
           <label for="team"><i class="fas fa-users"></i> Frente de Trabalho</label>
-          <select id="team" class="form-control" required>
+          <select id="team" class="form-control" required autocomplete="off">
             <option value="">Selecione...</option>
             <option value="A">Frente A</option>
             <option value="B">Frente B</option>
@@ -82,7 +82,7 @@
 
         <div class="form-group">
           <label for="lastVacation"><i class="fas fa-plane"></i> Últimas Férias</label>
-          <input type="date" id="lastVacation" class="form-control" />
+          <input type="date" id="lastVacation" class="form-control" autocomplete="off" />
         </div>
 
         <div class="form-group">
@@ -96,16 +96,16 @@
           <label><i class="fas fa-calendar-check"></i> Período de Férias (máx 30 dias)</label>
           <div class="vacation-days">
             <div>
-              <input type="number" id="vacationDay1" class="form-control" placeholder="Dias" min="0" max="30" />
-              <input type="date" id="vacationDate1" class="form-control" placeholder="Data" />
+              <input type="number" id="vacationDay1" class="form-control" placeholder="Dias" min="0" max="30" autocomplete="off" />
+              <input type="date" id="vacationDate1" class="form-control" placeholder="Data" autocomplete="off" />
             </div>
             <div>
-              <input type="number" id="vacationDay2" class="form-control" placeholder="Dias" min="0" max="30" />
-              <input type="date" id="vacationDate2" class="form-control" placeholder="Data" />
+              <input type="number" id="vacationDay2" class="form-control" placeholder="Dias" min="0" max="30" autocomplete="off" />
+              <input type="date" id="vacationDate2" class="form-control" placeholder="Data" autocomplete="off" />
             </div>
             <div>
-              <input type="number" id="vacationDay3" class="form-control" placeholder="Dias" min="0" max="30" />
-              <input type="date" id="vacationDate3" class="form-control" placeholder="Data" />
+              <input type="number" id="vacationDay3" class="form-control" placeholder="Dias" min="0" max="30" autocomplete="off" />
+              <input type="date" id="vacationDate3" class="form-control" placeholder="Data" autocomplete="off" />
             </div>
           </div>
           <div id="totalDays" style="text-align: right; margin-top: 0.5rem; font-weight: 500;">
@@ -133,7 +133,7 @@
 
         <div class="employee-list">
           <h2><i class="fas fa-users"></i> Funcionários Cadastrados</h2>
-          <input type="text" id="searchInput" placeholder="Buscar por nome ou matrícula" class="form-control" />
+          <input type="text" id="searchInput" placeholder="Buscar por nome ou matrícula" class="form-control" autocomplete="off" />
           <div class="table-responsive">
             <table id="employeesTable">
               <thead>
@@ -163,15 +163,15 @@
       <form id="userForm">
         <div class="form-group">
           <label for="newUsername">Usuário</label>
-          <input type="text" id="newUsername" class="form-control" required>
+          <input type="text" id="newUsername" class="form-control" required autocomplete="username">
         </div>
         <div class="form-group">
           <label for="newPassword">Senha</label>
-          <input type="password" id="newPassword" class="form-control" required>
+          <input type="password" id="newPassword" class="form-control" required autocomplete="new-password">
         </div>
         <div class="form-group">
           <label for="userType">Tipo de Usuário</label>
-          <select id="userType" class="form-control" required>
+          <select id="userType" class="form-control" required autocomplete="off">
             <option value="common">Usuário Comum</option>
             <option value="admin">Administrador</option>
           </select>
@@ -186,228 +186,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="utils.js"></script>
-  <script>
-    // Variável para armazenar a URL da foto
-    let photoUrl = '';
-
-    // Carrega funcionário para edição
-    async function loadEmployeeForEdit() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const employeeId = urlParams.get('id');
-      if (!employeeId) return;
-
-      try {
-        const { data: employee, error } = await supabase
-          .from('employees')
-          .select('*')
-          .eq('id', employeeId)
-          .single();
-
-        if (error) throw error;
-
-        // Preenche o formulário
-        document.getElementById('employeeId').value = employee.id;
-        document.getElementById('name').value = employee.name || '';
-        document.getElementById('matricula').value = employee.matricula || '';
-        document.getElementById('phone').value = employee.phone || '';
-        document.getElementById('hireDate').value = employee.hire_date || '';
-        document.getElementById('status').value = employee.status || '';
-        document.getElementById('team').value = employee.team || '';
-        document.getElementById('lastVacation').value = employee.last_vacation || '';
-
-        // Foto do funcionário
-        if (employee.photo) {
-          document.getElementById('photoPreview').innerHTML = `<img src="${employee.photo}" alt="Foto do funcionário">`;
-          photoUrl = employee.photo;
-        }
-
-        // Mostra botões de controle
-        document.getElementById('newUserBtn').style.display = 'block';
-        document.getElementById('deleteBtn').style.display = 'block';
-
-      } catch (error) {
-        console.error('Erro ao carregar funcionário:', error);
-      }
-    }
-
-    // Função para salvar funcionário
-    async function saveEmployee() {
-      try {
-        const employeeId = document.getElementById('employeeId').value;
-        const name = document.getElementById('name').value;
-        const matricula = document.getElementById('matricula').value;
-        const phone = document.getElementById('phone').value;
-        const hireDate = document.getElementById('hireDate').value;
-        const status = document.getElementById('status').value;
-        const team = document.getElementById('team').value;
-        const lastVacation = document.getElementById('lastVacation').value || null;
-
-        // Validação básica
-        if (!name || !matricula || !hireDate || !status || !team) {
-          await Swal.fire({
-            title: 'Campos obrigatórios',
-            text: 'Preencha todos os campos obrigatórios',
-            icon: 'warning'
-          });
-          return;
-        }
-
-        const employeeData = {
-          name,
-          matricula,
-          phone,
-          hire_date: hireDate,
-          status,
-          team,
-          last_vacation: lastVacation,
-          photo: photoUrl || null,
-          updated_at: new Date().toISOString()
-        };
-
-        // Mostrar loading
-        const saveButton = document.getElementById('saveButton');
-        const originalText = saveButton.innerHTML;
-        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
-        saveButton.disabled = true;
-
-        let result;
-        if (employeeId) {
-          // Atualização
-          result = await supabase
-            .from('employees')
-            .update(employeeData)
-            .eq('id', employeeId);
-        } else {
-          // Inserção
-          employeeData.created_at = new Date().toISOString();
-          employeeData.on_vacation = false;
-          result = await supabase
-            .from('employees')
-            .insert([employeeData]);
-        }
-
-        if (result.error) throw result.error;
-
-        await Swal.fire({
-          title: 'Sucesso!',
-          text: employeeId ? 'Funcionário atualizado com sucesso!' : 'Funcionário cadastrado com sucesso!',
-          icon: 'success'
-        });
-
-        // Limpar formulário se for novo cadastro
-        if (!employeeId) {
-          document.getElementById('employeeForm').reset();
-          document.getElementById('photoPreview').innerHTML = '<i class="fas fa-user"></i>';
-          photoUrl = '';
-        }
-
-        // Atualizar lista
-        if (window.loadEmployees) await loadEmployees();
-
-      } catch (error) {
-        console.error('Erro ao salvar funcionário:', error);
-        await Swal.fire({
-          title: 'Erro!',
-          text: 'Não foi possível salvar o funcionário. Verifique o console para detalhes.',
-          icon: 'error'
-        });
-      } finally {
-        const saveButton = document.getElementById('saveButton');
-        saveButton.innerHTML = originalText || '<i class="fas fa-save"></i> Salvar Funcionário';
-        saveButton.disabled = false;
-      }
-    }
-
-    // Função para deletar funcionário
-    async function deleteEmployee() {
-      const employeeId = document.getElementById('employeeId').value;
-      if (!employeeId) return;
-
-      const result = await Swal.fire({
-        title: 'Tem certeza?',
-        text: "Você não poderá reverter isso!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Sim, deletar!'
-      });
-
-      if (result.isConfirmed) {
-        try {
-          // Deleta períodos de férias primeiro
-          await supabase.from('vacation_periods').delete().eq('employee_id', employeeId);
-          
-          // Depois deleta o funcionário
-          const { error } = await supabase.from('employees').delete().eq('id', employeeId);
-          if (error) throw error;
-
-          await Swal.fire('Deletado!', 'Funcionário removido com sucesso.', 'success');
-          
-          // Limpa o formulário
-          document.getElementById('employeeForm').reset();
-          document.getElementById('photoPreview').innerHTML = '<i class="fas fa-user"></i>';
-          photoUrl = '';
-          document.getElementById('employeeId').value = '';
-          document.getElementById('deleteBtn').style.display = 'none';
-          
-          // Atualiza a lista
-          if (window.loadEmployees) loadEmployees();
-
-        } catch (error) {
-          console.error('Erro ao deletar:', error);
-          Swal.fire('Erro!', 'Não foi possível deletar o funcionário.', 'error');
-        }
-      }
-    }
-
-    // Evento para novo usuário
-    document.getElementById('newUserBtn').addEventListener('click', () => {
-      document.getElementById('employeeForm').reset();
-      document.getElementById('photoPreview').innerHTML = '<i class="fas fa-user"></i>';
-      photoUrl = '';
-      document.getElementById('employeeId').value = '';
-      document.getElementById('newUserBtn').style.display = 'none';
-      document.getElementById('deleteBtn').style.display = 'none';
-    });
-
-    // Evento para deletar
-    document.getElementById('deleteBtn').addEventListener('click', deleteEmployee);
-
-    // Evento para salvar
-    document.getElementById('saveButton').addEventListener('click', saveEmployee);
-
-    // Inicialização
-    document.addEventListener('DOMContentLoaded', async () => {
-      try {
-        await ensureSupabaseReady();
-        
-        // Verifica autenticação
-        const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-        if (!currentUser) {
-          window.location.href = 'login.html';
-          return;
-        }
-
-        // Carrega funcionário para edição se houver ID
-        await loadEmployeeForEdit();
-
-        // Restante da inicialização existente...
-        if (window.loadEmployees) await loadEmployees();
-
-      } catch (error) {
-        console.error('Erro na inicialização:', error);
-        window.location.href = 'login.html';
-      }
-    });
-
-    // Função auxiliar para garantir que o Supabase está pronto
-    async function ensureSupabaseReady() {
-      return new Promise((resolve) => {
-        if (window.supabase) return resolve();
-        document.addEventListener('supabase-ready', () => resolve());
-      });
-    }
-  </script>
+  <script src="form.js"></script>
 </body>
 </html>
