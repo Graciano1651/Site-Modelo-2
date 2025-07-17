@@ -104,82 +104,118 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Salva ou atualiza funcionário
     async function saveEmployee() {
-      try {
-        const id = document.getElementById('employeeId').value;
-        const name = document.getElementById('name').value.trim();
-        const matricula = document.getElementById('matricula').value.trim();
-        const phone = document.getElementById('phone').value.trim();
-        const hireDate = document.getElementById('hireDate').value;
-        const status = document.getElementById('status').value;
-        const team = document.getElementById('team').value;
-        const lastVacation = document.getElementById('lastVacation').value || null;
+  try {
+    // 1. Coletar dados do formulário
+    const id = document.getElementById('employeeId').value;
+    const name = document.getElementById('name').value.trim();
+    const matricula = document.getElementById('matricula').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const hireDate = document.getElementById('hireDate').value;
+    const status = document.getElementById('status').value;
+    const team = document.getElementById('team').value;
+    const lastVacation = document.getElementById('lastVacation').value || null;
 
-        // Validação
-        if (!name || !matricula || !hireDate || !status || !team) {
-          await Swal.fire('Atenção!', 'Preencha todos os campos obrigatórios.', 'warning');
-          return;
-        }
+    // 2. Validação dos campos obrigatórios
+    if (!name || !matricula || !hireDate || !status || !team) {
+      await Swal.fire({
+        title: 'Campos obrigatórios',
+        text: 'Preencha todos os campos marcados como obrigatórios',
+        icon: 'warning',
+        confirmButtonText: 'Entendi'
+      });
+      return;
+    }
 
-         const employeeData = {
-          name,
-          matricula,
-          phone,
-          hire_date: hireDate,
-          status,
-          team,
-          last_vacation: lastVacation,
-          photo: photoUrl
-        };
+    // 3. Preparar os dados para envio
+    const employeeData = {
+      name,
+      matricula,
+      phone,
+      hire_date: hireDate,
+      status,
+      team,
+      last_vacation: lastVacation,
+      photo: photoUrl || null,
+      updated_at: new Date().toISOString()
+    };
 
-        let result;
-        if (id) {
-          // Atualiza funcionário existente
-          result = await supabase
-            .from('employees')
-            .update(employeeData)
-            .eq('id', id)
-            .select();
-        } else {
-          // Cria novo funcionário
-          employeeData.on_vacation = false;
-          result = await supabase
-            .from('employees')
-            .insert([employeeData])
-            .select();
-        }
+    // 4. Mostrar loading
+    Swal.fire({
+      title: 'Salvando...',
+      html: 'Por favor, aguarde enquanto atualizamos os dados',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
 
-        if (result.error) throw result.error;
+    // 5. Enviar para o Supabase
+    let result;
+    if (id) {
+      // Atualização de funcionário existente
+      result = await supabase
+        .from('employees')
+        .update(employeeData)
+        .eq('id', id)
+        .select();
+    } else {
+      // Cadastro de novo funcionário
+      employeeData.on_vacation = false;
+      employeeData.created_at = new Date().toISOString();
+      result = await supabase
+        .from('employees')
+        .insert([employeeData])
+        .select();
+    }
 
-        // Feedback ao usuário
-        await Swal.fire({
-          title: 'Sucesso!',
-          text: id ? 'Funcionário atualizado com sucesso.' : 'Funcionário cadastrado com sucesso.',
-          icon: 'success',
-          confirmButtonText: 'OK'
-        });
+    // 6. Verificar erros
+    if (result.error) {
+      throw result.error;
+    }
 
-        // Limpa formulário após sucesso
+    // 7. Feedback visual de sucesso
+    Swal.fire({
+      title: 'Sucesso!',
+      icon: 'success',
+      html: `
+        <div style="text-align:left">
+          <p><strong>${id ? 'Atualizado' : 'Cadastrado'} com sucesso!</strong></p>
+          <p>Nome: ${name}</p>
+          <p>Matrícula: ${matricula}</p>
+          <p>Time: ${team}</p>
+        </div>
+      `,
+      confirmButtonText: 'OK',
+      willClose: () => {
+        // 8. Atualizar lista e limpar formulário se for novo cadastro
+        loadEmployees();
         if (!id) {
           document.getElementById('employeeForm').reset();
-          photoPreview.innerHTML = '<i class="fas fa-user"></i>';
+          document.getElementById('photoPreview').innerHTML = '<i class="fas fa-user"></i>';
           photoUrl = '';
         }
-
-        // Atualiza lista
-        await loadEmployees();
-
-      } catch (error) {
-        console.error('Erro ao salvar funcionário:', error);
-        await Swal.fire({
-          title: 'Erro!',
-          text: error.message.includes('row-level security') ? 
-            'Permissão negada. Verifique as configurações de segurança no Supabase.' : 
-            'Não foi possível salvar o funcionário. ' + error.message,
-          icon: 'error',
-          confirmButtonText: 'OK'
-        });
       }
-    }
+    });
+
+  } catch (error) {
+    console.error('Erro ao salvar funcionário:', error);
+    
+    // 9. Feedback visual de erro
+    Swal.fire({
+      title: 'Erro ao salvar',
+      icon: 'error',
+      html: `
+        <div style="text-align:left">
+          <p>Não foi possível ${id ? 'atualizar' : 'cadastrar'} o funcionário.</p>
+          <p><strong>Erro:</strong> ${error.message}</p>
+          ${error.message.includes('permission') ? 
+            '<p>Verifique suas permissões no Supabase</p>' : ''}
+        </div>
+      `,
+      confirmButtonText: 'Entendi'
+    });
+  }
+}
 
     // Carrega lista de funcionários
     async function loadEmployees() {
