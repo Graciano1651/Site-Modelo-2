@@ -57,9 +57,33 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Botão de salvar
     document.getElementById('saveButton').addEventListener('click', async (e) => {
-      e.preventDefault();
-      await saveEmployee();
+  e.preventDefault();
+  
+  // 1. Adiciona visual de carregamento
+  const saveButton = e.currentTarget;
+  const originalText = saveButton.innerHTML;
+  saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+  saveButton.disabled = true;
+  
+  try {
+    // 2. Executa a função de salvar
+    await saveEmployee();
+    
+  } catch (error) {
+    // 3. Trata erros não capturados
+    console.error('Erro não tratado:', error);
+    Swal.fire({
+      title: 'Erro inesperado',
+      text: 'Ocorreu um problema ao salvar. Verifique o console para detalhes.',
+      icon: 'error'
     });
+    
+  } finally {
+    // 4. Restaura o botão (executa sempre, mesmo com erro)
+    saveButton.innerHTML = originalText;
+    saveButton.disabled = false;
+  }
+});
 
     // Carrega funcionário para edição
     async function loadEmployeeForEdit(id) {
