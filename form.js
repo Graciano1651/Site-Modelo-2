@@ -83,8 +83,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           team,
           last_vacation: lastVacation,
           photo: photoUrl || null,
-          updated_at: new Date().toISOString()
-        };
+         };
 
         // Mostrar loading
         const saveButton = document.getElementById('saveButton');
