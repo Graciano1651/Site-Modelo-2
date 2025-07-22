@@ -57,7 +57,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Função para salvar funcionário - VERSÃO CORRIGIDA
     async function saveEmployee() {
+      let saveButton, originalText;
+      
       try {
+        saveButton = document.getElementById('saveButton');
+        originalText = saveButton.innerHTML;
+        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+        saveButton.disabled = true;
+
         const id = document.getElementById('employeeId').value;
         const name = document.getElementById('name').value.trim();
         const matricula = document.getElementById('matricula').value.trim();
@@ -98,13 +105,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           photo: photoUrl || null,
         };
 
-        // Mostrar loading
-        const saveButton = document.getElementById('saveButton');
-        const originalText = saveButton.innerHTML;
-        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
-        saveButton.disabled = true;
-
-        let result;
+         let result;
         if (id) {
           // Atualização
           result = await supabase
@@ -113,22 +114,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             .eq('id', id)
             .select();
 
+          if (result.error) throw result.error;
+
           // Deletar períodos antigos e adicionar novos
-          if (result.data && result.data.length > 0) {
+          await supabase
+            .from('vacation_periods')
+            .delete()
+            .eq('employee_id', id);
+
+          if (vacationPeriods.length > 0) {
+            const periodsToInsert = vacationPeriods.map(period => ({
+              ...period,
+              employee_id: id
+            }));
             await supabase
               .from('vacation_periods')
-              .delete()
-              .eq('employee_id', id);
-
-            if (vacationPeriods.length > 0) {
-              const periodsToInsert = vacationPeriods.map(period => ({
-                ...period,
-                employee_id: id
-              }));
-              await supabase
-                .from('vacation_periods')
-                .insert(periodsToInsert);
-            }
+              .insert(periodsToInsert);
           }
         } else {
           // Inserção
@@ -138,6 +139,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             .from('employees')
             .insert([employeeData])
             .select();
+
+          if (result.error) throw result.error;
 
           // Adicionar períodos de férias para novo funcionário
           if (result.data && result.data.length > 0 && vacationPeriods.length > 0) {
@@ -152,12 +155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
         }
 
-        if (result.error) {
-          console.error('Erro detalhado:', result.error);
-          throw new Error(result.error.message || 'Erro ao salvar funcionário');
-        }
-
-        await Swal.fire({
+       await Swal.fire({
           title: 'Sucesso!',
           text: id ? 'Funcionário atualizado com sucesso!' : 'Funcionário cadastrado com sucesso!',
           icon: 'success'
@@ -174,20 +172,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadEmployees();
 
       } catch (error) {
-        console.error('Erro detalhado ao salvar funcionário:', error);
+        console.error('Erro ao salvar funcionário:', error);
         await Swal.fire({
           title: 'Erro!',
           html: `<div style="text-align:left">
                   <p><strong>Não foi possível salvar o funcionário</strong></p>
-                  <p>Erro: ${error.message}</p>
-                  ${error.details ? `<p>Detalhes: ${error.details}</p>` : ''}
+                 <p>Erro: ${error.message}</p>
                 </div>`,
           icon: 'error'
         });
       } finally {
-        const saveButton = document.getElementById('saveButton');
-        if (saveButton) {
-          saveButton.innerHTML = originalText || '<i class="fas fa-save"></i> Salvar Funcionário';
+        if (saveButton && originalText) {
+          saveButton.innerHTML = originalText;
           saveButton.disabled = false;
         }
       }
@@ -231,9 +227,16 @@ document.addEventListener('DOMContentLoaded', async () => {
           .order('start_date', { ascending: true });
 
         if (!periodsError && vacationPeriods) {
+          // Limpa campos de férias primeiro
+          for (let i = 1; i <= 3; i++) {
+            document.getElementById(`vacationDay${i}`).value = '';
+            document.getElementById(`vacationDate${i}`).value = '';
+          }
+          
+          // Preenche com os dados existentes
           for (let i = 0; i < Math.min(3, vacationPeriods.length); i++) {
             document.getElementById(`vacationDay${i+1}`).value = vacationPeriods[i].days;
-            document.getElementById(`vacationDate${i+1}`).value = vacationPeriods[i].start_date;
+            document.getElementById(`vacationDate${i+1}`).value = vacationPeriods[i].start_date.split('T')[0]; // Remove hora se existir
           }
         }
 
