@@ -74,16 +74,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!status) throw new Error('Status é obrigatório');
         if (!team) throw new Error('Frente de trabalho é obrigatória');
 
+        // Coletar períodos de férias
+        const vacationPeriods = [];
+        for (let i = 1; i <= 3; i++) {
+          const days = document.getElementById(`vacationDay${i}`).value;
+          const date = document.getElementById(`vacationDate${i}`).value;
+          if (days && date) {
+            vacationPeriods.push({
+              days: parseInt(days),
+              start_date: date
+            });
+          }
+        }
+
         const employeeData = {
           name,
           matricula,
-          phone: phone || null, // Garante que seja null se vazio
+          phone: phone || null,
           hire_date: hireDate,
           status,
           team,
           last_vacation: lastVacation,
           photo: photoUrl || null,
-         };
+        };
 
         // Mostrar loading
         const saveButton = document.getElementById('saveButton');
@@ -98,7 +111,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             .from('employees')
             .update(employeeData)
             .eq('id', id)
-            .select(); // Adicionado .select() para retornar os dados
+            .select();
+
+          // Deletar períodos antigos e adicionar novos
+          if (result.data && result.data.length > 0) {
+            await supabase
+              .from('vacation_periods')
+              .delete()
+              .eq('employee_id', id);
+
+            if (vacationPeriods.length > 0) {
+              const periodsToInsert = vacationPeriods.map(period => ({
+                ...period,
+                employee_id: id
+              }));
+              await supabase
+                .from('vacation_periods')
+                .insert(periodsToInsert);
+            }
+          }
         } else {
           // Inserção
           employeeData.created_at = new Date().toISOString();
@@ -106,7 +137,19 @@ document.addEventListener('DOMContentLoaded', async () => {
           result = await supabase
             .from('employees')
             .insert([employeeData])
-            .select(); // Adicionado .select() para retornar os dados
+            .select();
+
+          // Adicionar períodos de férias para novo funcionário
+          if (result.data && result.data.length > 0 && vacationPeriods.length > 0) {
+            const newEmployeeId = result.data[0].id;
+            const periodsToInsert = vacationPeriods.map(period => ({
+              ...period,
+              employee_id: newEmployeeId
+            }));
+            await supabase
+              .from('vacation_periods')
+              .insert(periodsToInsert);
+          }
         }
 
         if (result.error) {
@@ -178,6 +221,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (employee.photo) {
           photoPreview.innerHTML = `<img src="${employee.photo}" alt="Preview">`;
           photoUrl = employee.photo;
+        }
+
+        // Carrega períodos de férias
+        const { data: vacationPeriods, error: periodsError } = await supabase
+          .from('vacation_periods')
+          .select('*')
+          .eq('employee_id', id)
+          .order('start_date', { ascending: true });
+
+        if (!periodsError && vacationPeriods) {
+          for (let i = 0; i < Math.min(3, vacationPeriods.length); i++) {
+            document.getElementById(`vacationDay${i+1}`).value = vacationPeriods[i].days;
+            document.getElementById(`vacationDate${i+1}`).value = vacationPeriods[i].start_date;
+          }
         }
 
         document.getElementById('saveButton').innerHTML = '<i class="fas fa-save"></i> Atualizar Funcionário';
@@ -278,7 +335,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!isConfirmed) return;
 
-        // Deleta o funcionário
+        // Primeiro deleta os períodos de férias
+        await supabase
+          .from('vacation_periods')
+          .delete()
+          .eq('employee_id', id);
+
+        // Depois deleta o funcionário
         const { error: deleteError } = await supabase
           .from('employees')
           .delete()
