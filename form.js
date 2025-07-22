@@ -57,11 +57,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Função para salvar funcionário - VERSÃO CORRIGIDA
     async function saveEmployee() {
-      let saveButton, originalText;
+      const saveButton = document.getElementById('saveButton');
+      const originalText = saveButton.innerHTML;
       
-      try {
-        saveButton = document.getElementById('saveButton');
-        originalText = saveButton.innerHTML;
+       try {
         saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
         saveButton.disabled = true;
 
@@ -105,7 +104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           photo: photoUrl || null,
         };
 
-         let result;
+        let result;
         if (id) {
           // Atualização
           result = await supabase
@@ -117,19 +116,24 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (result.error) throw result.error;
 
           // Deletar períodos antigos e adicionar novos
-          await supabase
+          const { error: deleteError } = await supabase
             .from('vacation_periods')
             .delete()
             .eq('employee_id', id);
+
+          if (deleteError) console.error('Erro ao deletar períodos antigos:', deleteError);
 
           if (vacationPeriods.length > 0) {
             const periodsToInsert = vacationPeriods.map(period => ({
               ...period,
               employee_id: id
             }));
-            await supabase
+
+            const { error: insertError } = await supabase
               .from('vacation_periods')
               .insert(periodsToInsert);
+
+            if (insertError) throw insertError;
           }
         } else {
           // Inserção
@@ -149,13 +153,16 @@ document.addEventListener('DOMContentLoaded', async () => {
               ...period,
               employee_id: newEmployeeId
             }));
-            await supabase
+
+            const { error: insertError } = await supabase
               .from('vacation_periods')
               .insert(periodsToInsert);
+
+            if (insertError) throw insertError;
           }
         }
 
-       await Swal.fire({
+        await Swal.fire({
           title: 'Sucesso!',
           text: id ? 'Funcionário atualizado com sucesso!' : 'Funcionário cadastrado com sucesso!',
           icon: 'success'
@@ -177,15 +184,13 @@ document.addEventListener('DOMContentLoaded', async () => {
           title: 'Erro!',
           html: `<div style="text-align:left">
                   <p><strong>Não foi possível salvar o funcionário</strong></p>
-                 <p>Erro: ${error.message}</p>
+                  <p>Erro: ${error.message}</p>
                 </div>`,
           icon: 'error'
         });
       } finally {
-        if (saveButton && originalText) {
-          saveButton.innerHTML = originalText;
-          saveButton.disabled = false;
-        }
+        saveButton.innerHTML = originalText;
+        saveButton.disabled = false;
       }
     }
 
