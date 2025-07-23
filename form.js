@@ -152,18 +152,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Inserir novos períodos de férias se houver
         if (result.data && result.data.length > 0 && vacationPeriods.length > 0) {
           const employeeId = result.data[0].id;
-           const periodsToInsert = vacationPeriods.map(period => ({
+          const periodsToInsert = vacationPeriods.map(period => ({
             employee_id: employeeId,
             start_date: period.start_date,
             days: period.days,
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            id: self.crypto.randomUUID() // GERANDO UUID PARA O ID
           }));
 
-          const { error: periodsError } = await supabase
-            .from('vacation_periods')
-            .insert(periodsToInsert);
+          console.log("Dados sendo enviados para vacation_periods:", periodsToInsert);
 
-          if (periodsError) throw periodsError;
+          const { data: insertedPeriods, error: periodsError } = await supabase
+            .from('vacation_periods')
+            .insert(periodsToInsert)
+            .select();
+
+          if (periodsError) {
+            console.error("Erro detalhado ao inserir períodos:", periodsError);
+            throw periodsError;
+          }
+
+          console.log("Períodos inseridos com sucesso:", insertedPeriods);
 
           // Atualizar informações de férias no employee
           const firstPeriod = vacationPeriods[0];
@@ -197,14 +206,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Atualizar lista
         await loadEmployees();
 
-      } catch (error) {
-        console.error('Erro ao salvar funcionário:', error);
+     } catch (error) {
+        console.error('Erro detalhado ao salvar funcionário:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          stack: error.stack
+        });
+        
         await Swal.fire({
           title: 'Erro!',
           html: `<div style="text-align:left">
                   <p><strong>Não foi possível salvar o funcionário</strong></p>
                   <p>${error.message}</p>
-                  <p>Detalhes: ${JSON.stringify(error)}</p>
+                  <p>Código: ${error.code || 'N/A'}</p>
+                  ${error.details ? `<p>Detalhes: ${error.details}</p>` : ''}
                 </div>`,
           icon: 'error'
         });
