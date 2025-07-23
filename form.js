@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await loadEmployeeForEdit(employeeId);
     }
 
-    // Função para salvar funcionário - VERSÃO COMPLETA CORRIGIDA
+    // Função para salvar funcionário
     async function saveEmployee() {
       const saveButton = document.getElementById('saveButton');
       const originalText = saveButton.innerHTML;
@@ -109,18 +109,22 @@ document.addEventListener('DOMContentLoaded', async () => {
           team,
           last_vacation: lastVacation,
           photo: photoUrl || null,
+          on_vacation: vacationPeriods.length > 0,
+          created_at: new Date().toISOString()
         };
 
         let result;
         if (id) {
           // Atualização
-          result = await supabase
+          const { data: updatedEmployee, error: updateError } = await supabase
             .from('employees')
             .update(employeeData)
             .eq('id', id)
-            .select();
+            .select()
+            .single();
 
-          if (result.error) throw result.error;
+          if (updateError) throw updateError;
+          result = { data: [updatedEmployee] };
 
           // Deletar períodos antigos
           const { error: deleteError } = await supabase
@@ -129,47 +133,43 @@ document.addEventListener('DOMContentLoaded', async () => {
             .eq('employee_id', id);
 
           if (deleteError) console.error('Erro ao deletar períodos antigos:', deleteError);
-
-          // Inserir novos períodos
-          if (vacationPeriods.length > 0) {
-            const periodsToInsert = vacationPeriods.map(period => ({
-              ...period,
-              employee_id: id,
-              created_at: new Date().toISOString()
-            }));
-
-            const { error: insertError } = await supabase
-              .from('vacation_periods')
-              .insert(periodsToInsert);
-
-            if (insertError) throw insertError;
-          }
         } else {
           // Inserção de novo funcionário
-          employeeData.created_at = new Date().toISOString();
-          employeeData.on_vacation = false;
-          result = await supabase
+          const { data: newEmployee, error: insertError } = await supabase
             .from('employees')
             .insert([employeeData])
-            .select();
+            .select()
+            .single();
 
-          if (result.error) throw result.error;
+          if (insertError) throw insertError;
+          result = { data: [newEmployee] };
+        }
 
-          // Inserir períodos de férias para novo funcionário
-          if (result.data && result.data.length > 0 && vacationPeriods.length > 0) {
-            const newEmployeeId = result.data[0].id;
-            const periodsToInsert = vacationPeriods.map(period => ({
-              ...period,
-              employee_id: newEmployeeId,
-              created_at: new Date().toISOString()
-            }));
+        // Inserir novos períodos de férias
+        if (result.data && result.data.length > 0 && vacationPeriods.length > 0) {
+          const employeeId = result.data[0].id;
+          const periodsToInsert = vacationPeriods.map(period => ({
+            ...period,
+            employee_id: employeeId,
+            created_at: new Date().toISOString()
+          }));
 
-            const { error: insertError } = await supabase
-              .from('vacation_periods')
-              .insert(periodsToInsert);
+          const { error: periodsError } = await supabase
+            .from('vacation_periods')
+            .insert(periodsToInsert);
 
-            if (insertError) throw insertError;
-          }
+          if (periodsError) throw periodsError;
+
+          // Atualizar informações de férias no employee
+          const firstPeriod = vacationPeriods[0];
+          await supabase
+            .from('employees')
+            .update({
+              vacation_start_date: firstPeriod.start_date,
+              total_vacation_days: vacationPeriods.reduce((sum, p) => sum + p.days, 0),
+              on_vacation: true
+            })
+            .eq('id', employeeId);
         }
 
         await Swal.fire({
