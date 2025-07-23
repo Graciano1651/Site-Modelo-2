@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await loadEmployeeForEdit(employeeId);
     }
 
-    // Função para salvar funcionário
+    // Função para salvar funcionário - VERSÃO CORRIGIDA
     async function saveEmployee() {
       const saveButton = document.getElementById('saveButton');
       const originalText = saveButton.innerHTML;
@@ -100,6 +100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
         }
 
+        // Preparar dados do funcionário
         const employeeData = {
           name,
           matricula,
@@ -115,10 +116,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         let result;
         if (id) {
-          // Atualização
+          // Atualização - CORREÇÃO: Removido created_at para updates
           const { data: updatedEmployee, error: updateError } = await supabase
             .from('employees')
-            .update(employeeData)
+            .update({
+              ...employeeData,
+              created_at: undefined // Não atualizar created_at em updates
+            })
             .eq('id', id)
             .select()
             .single();
@@ -132,7 +136,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             .delete()
             .eq('employee_id', id);
 
-          if (deleteError) console.error('Erro ao deletar períodos antigos:', deleteError);
+          if (deleteError) throw deleteError;
         } else {
           // Inserção de novo funcionário
           const { data: newEmployee, error: insertError } = await supabase
@@ -145,12 +149,13 @@ document.addEventListener('DOMContentLoaded', async () => {
           result = { data: [newEmployee] };
         }
 
-        // Inserir novos períodos de férias
+        // Inserir novos períodos de férias se houver
         if (result.data && result.data.length > 0 && vacationPeriods.length > 0) {
           const employeeId = result.data[0].id;
-          const periodsToInsert = vacationPeriods.map(period => ({
-            ...period,
+           const periodsToInsert = vacationPeriods.map(period => ({
             employee_id: employeeId,
+            start_date: period.start_date,
+            days: period.days,
             created_at: new Date().toISOString()
           }));
 
@@ -162,14 +167,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
           // Atualizar informações de férias no employee
           const firstPeriod = vacationPeriods[0];
-          await supabase
+          const totalDays = vacationPeriods.reduce((sum, p) => sum + p.days, 0);
+          
+          const { error: updateVacationError } = await supabase
             .from('employees')
             .update({
               vacation_start_date: firstPeriod.start_date,
-              total_vacation_days: vacationPeriods.reduce((sum, p) => sum + p.days, 0),
+              total_vacation_days: totalDays,
               on_vacation: true
             })
             .eq('id', employeeId);
+
+          if (updateVacationError) throw updateVacationError;
         }
 
         await Swal.fire({
@@ -195,6 +204,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           html: `<div style="text-align:left">
                   <p><strong>Não foi possível salvar o funcionário</strong></p>
                   <p>${error.message}</p>
+                  <p>Detalhes: ${JSON.stringify(error)}</p>
                 </div>`,
           icon: 'error'
         });
