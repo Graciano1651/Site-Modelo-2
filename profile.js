@@ -1,4 +1,4 @@
-import { supabase } from './supabase.js';
+import { supabase } from 'supabase.js';
 
 const params = new URLSearchParams(window.location.search);
 const funcionarioId = params.get('id');
@@ -22,14 +22,15 @@ async function carregarPerfil() {
     return;
   }
 
-  document.getElementById('nome').textContent = funcionario.nome;
-  document.getElementById('email').textContent = funcionario.email;
-  document.getElementById('equipe').textContent = funcionario.equipe;
+  document.getElementById('nome').textContent = funcionario.name;
+  document.getElementById('email').textContent = funcionario.role;
+  document.getElementById('equipe').textContent = funcionario.team;
 
   const { data: ferias, error: errorFerias } = await supabase
     .from('vacation_periods')
     .select('*')
-    .eq('employee_id', funcionarioId);
+    .eq('employee_id', funcionarioId)
+    .order('start', { ascending: true });
 
   if (errorFerias) {
     console.error('Erro ao carregar períodos de férias:', errorFerias);
@@ -41,7 +42,7 @@ async function carregarPerfil() {
 
   ferias.forEach(p => {
     const li = document.createElement('li');
-    li.textContent = `${formatarData(p.data_inicio)} até ${formatarData(p.data_fim)}`;
+    li.textContent = `${formatarData(p.start)} até ${formatarData(p.end)}`;
     lista.appendChild(li);
   });
 }
@@ -55,4 +56,5 @@ document.getElementById('voltar').addEventListener('click', () => {
   history.back();
 });
 
+// Iniciar carregamento
 carregarPerfil();

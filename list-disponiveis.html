@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Férias Disponíveis</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
   <div class="container">
@@ -28,11 +28,7 @@
           <thead>
             <tr>
               <th>Nome</th>
-              <th>Matrícula</th>
-              <th>Status</th>
-              <th>Frente</th>
-              <th>Contratação</th>
-              <th>Últimas Férias</th>
+              <th>Equipe</th>
               <th>Visualizar</th>
             </tr>
           </thead>
@@ -54,64 +50,53 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      try {
-        const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-        if (!currentUser) {
-          window.location.href = 'login.html';
-          return;
-        }
+      await ensureSupabaseReady();
 
-        await ensureSupabaseReady();
-        applySavedTheme();
-        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-        await loadAvailableEmployees();
-      } catch (error) {
-        console.error('Erro na inicialização:', error);
+      const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+      if (!currentUser) {
+        window.location.href = 'login.html';
+        return;
       }
+
+      if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark');
+      }
+
+      document.getElementById('themeToggle').addEventListener('click', () => {
+        document.body.classList.toggle('dark');
+        localStorage.setItem('darkMode', document.body.classList.contains('dark'));
+      });
+
+      await carregarDisponiveis();
     });
 
-    async function loadAvailableEmployees() {
-      try {
-        const { data: employees, error } = await supabase.from('employees').select('*');
-        if (error) throw error;
+    async function carregarDisponiveis() {
+      const { data: funcionarios } = await supabase.from('employees').select('*');
+      const { data: ferias } = await supabase.from('vacation_periods').select('*');
 
-        const tbody = document.getElementById('availableTable');
-        tbody.innerHTML = '';
+      const hoje = new Date();
+      const idsEmFerias = new Set(
+        ferias.filter(p => {
+          const inicio = new Date(p.start);
+          const fim = new Date(p.end);
+          return inicio <= hoje && hoje <= fim;
+        }).map(p => p.employee_id)
+      );
 
-        const now = new Date();
-        const available = employees.filter(emp => {
-          if (emp.on_vacation) return false;
-          const refDate = emp.last_vacation ? new Date(emp.last_vacation) : new Date(emp.hire_date);
-          const months = (now.getFullYear() - refDate.getFullYear()) * 12 + 
-                        (now.getMonth() - refDate.getMonth());
-          return months >= 12;
-        });
+      const disponiveis = funcionarios.filter(f => !idsEmFerias.has(f.id));
+      const tabela = document.getElementById('availableTable');
+      tabela.innerHTML = '';
 
-        if (available.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Nenhum funcionário com férias disponíveis</td></tr>';
-          return;
-        }
-
-        available.forEach(emp => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${emp.name || 'Não informado'}</td>
-            <td>${emp.matricula || 'N/A'}</td>
-            <td>${window.utils?.formatStatus(emp.status) || emp.status || 'N/A'}</td>
-            <td>${emp.team || 'N/A'}</td>
-            <td>${window.utils?.formatDate(emp.hire_date) || 'N/A'}</td>
-            <td>${emp.last_vacation ? window.utils?.formatDate(emp.last_vacation) : 'Nunca'}</td>
-            <td><a href="profile.html?id=${emp.id}" class="btn-view"><i class="fas fa-eye"></i> Ver</a></td>
-          `;
-          tbody.appendChild(tr);
-        });
-
-      } catch (error) {
-        console.error('Erro ao carregar:', error);
-        document.getElementById('availableTable').innerHTML = 
-          '<tr><td colspan="7" style="text-align: center; color: var(--danger);">Erro ao carregar lista</td></tr>';
-      }
+      disponiveis.forEach(f => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${f.name}</td>
+          <td>${f.team}</td>
+          <td><a href="profile.html?id=${f.id}" class="btn btn-primary btn-sm"><i class="fas fa-eye"></i></a></td>
+        `;
+        tabela.appendChild(row);
+      });
     }
   </script>
 </body>
- </html>
+</html>

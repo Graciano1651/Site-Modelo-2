@@ -5,13 +5,24 @@ async function ensureSupabaseReady() {
   });
 }
 
-// Carrega dados do dashboard
+document.addEventListener('DOMContentLoaded', async () => {
+  await ensureSupabaseReady();
+  const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+  if (!currentUser) {
+    window.location.href = 'login.html';
+    return;
+  }
+
+  const { funcionarios, ferias } = await carregarDashboard();
+  atualizarUI(funcionarios, ferias);
+});
+
 async function carregarDashboard() {
   try {
     const { data: funcionarios = [], error: errFunc } = await supabase
       .from('employees')
       .select('*');
-    
+
     if (errFunc) throw errFunc;
 
     const { data: ferias = [], error: errFerias } = await supabase
@@ -27,44 +38,51 @@ async function carregarDashboard() {
   }
 }
 
-// Atualiza a interface do usuário
-function atualizarUI(funcionarios, ferias) {
+ function atualizarUI(funcionarios, ferias) {
   try {
-    document.getElementById('totalEmployees').textContent = funcionarios.length;
-    document.getElementById('onVacation').textContent = funcionarios.filter(f => f.on_vacation).length;
-    document.getElementById('availableVacation').textContent = funcionarios.filter(f => 
-      !f.on_vacation && calcDisponibilidade(f.hire_date, f.last_vacation)).length;
-    document.getElementById('conflicts').textContent = detectarConflitos(ferias, funcionarios).length;
+    const hoje = new Date();
+    const emFeriasIds = new Set(
+      ferias.filter(p => {
+        const inicio = new Date(p.start);
+        const fim = new Date(p.end);
+        return inicio <= hoje && hoje <= fim;
+      }).map(p => p.employee_id)
+    );
+
+    const total = funcionarios.length;
+    const emFerias = funcionarios.filter(f => emFeriasIds.has(f.id)).length;
+    const disponiveis = funcionarios.filter(f => !emFeriasIds.has(f.id)).length;
+    const conflitos = detectarConflitos(ferias, funcionarios).length;
+
+    document.getElementById('totalEmployees').textContent = total;
+    document.getElementById('onVacation').textContent = emFerias;
+    document.getElementById('availableVacation').textContent = disponiveis;
+    document.getElementById('conflicts').textContent = conflitos;
   } catch (error) {
     console.error('Erro ao atualizar UI:', error);
   }
 }
 
-// Funções originais mantidas
-function detectarConflitos(ferias, funcionarios) {
+ function detectarConflitos(ferias, funcionarios) {
   const conflitos = [];
-  const funcionariosMap = {};
-  
-  funcionarios.forEach(f => {
-    funcionariosMap[f.id] = f;
-  });
+  const equipeMap = {};
 
-  const porEquipe = {};
-  ferias.forEach(f => {
-    const funcionario = funcionariosMap[f.employee_id];
+  ferias.forEach(p => {
+    const funcionario = funcionarios.find(f => f.id === p.employee_id);
     if (!funcionario) return;
 
     const equipe = funcionario.team;
-    if (!porEquipe[equipe]) porEquipe[equipe] = [];
-    porEquipe[equipe].push({ ...f, funcionario });
+    if (!equipeMap[equipe]) equipeMap[equipe] = [];
+
+    equipeMap[equipe].push({ ...p, funcionario });
   });
 
-  for (const equipe in porEquipe) {
-    const lista = porEquipe[equipe];
+  for (const equipe in equipeMap) {
+    const lista = equipeMap[equipe];
     for (let i = 0; i < lista.length; i++) {
       for (let j = i + 1; j < lista.length; j++) {
-        if (periodosConflitantes(lista[i], lista[j])) {
-          conflitos.push([lista[i], lista[j]]);
+        if (sobrepoe(lista[i], lista[j])) {
+          conflitos.push([lista[i].funcionario.name, lista[j].funcionario.name]);
         }
       }
     }
@@ -73,50 +91,11 @@ function detectarConflitos(ferias, funcionarios) {
   return conflitos;
 }
 
-function periodosConflitantes(a, b) {
-  const inicioA = new Date(a.start_date);
-  const fimA = new Date(inicioA);
-  fimA.setDate(inicioA.getDate() + a.days);
-
-  const inicioB = new Date(b.start_date);
-  const fimB = new Date(inicioB);
-  fimB.setDate(inicioB.getDate() + b.days);
-
-  return inicioA <= fimB && fimA >= inicioB;
+function sobrepoe(a, b) {
+  const aInicio = new Date(a.start);
+  const aFim = new Date(a.end);
+  const bInicio = new Date(b.start);
+  const bFim = new Date(b.end);
+  return aInicio <= bFim && bInicio <= aFim;
 }
-
-// Inicialização principal
-document.addEventListener('DOMContentLoaded', async () => {
-  try {
-    await ensureSupabaseReady();
-    
-    // Verifica autenticação
-    const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-    if (!currentUser) {
-      window.location.href = 'login.html';
-      return;
-    }
-
-    // Controle de acesso
-    if (currentUser.profile?.userType === 'admin') {
-      document.getElementById('adminLinks').style.display = 'inline-block';
-    }
-
-    // Carrega dados
-    const { funcionarios, ferias } = await carregarDashboard();
-    atualizarUI(funcionarios, ferias);
-
-    // Configura eventos
-    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-      sessionStorage.removeItem('currentUser');
-      window.location.href = 'login.html';
-    });
-    
-    applySavedTheme();
-
-  } catch (error) {
-    console.error('Erro no dashboard:', error);
-    alert('Erro ao carregar dashboard. Verifique o console.');
-  }
-});
+ 

@@ -16,9 +16,9 @@
       </div>
             
       <div style="display: flex; flex-direction: column; gap: 1rem;">
-        <button onclick="window.location.href='login.html'" class="btn btn-primary" style="padding: 0.75rem 1.5rem;">
+        <button type="button" onclick="window.location.href='login.html'" class="btn btn-primary" style="padding: 0.75rem 1.5rem;">
           <i class="fas fa-sign-in-alt"></i> Acessar Sistema
-      </button>
+        </button>
         <div style="text-align: right; margin-top: 1rem;">
           <button id="themeToggle" class="btn-theme"><i class="fas fa-moon"></i></button>
         </div>
@@ -26,7 +26,7 @@
     </div>
   </div>
 
-  <!-- Texto movido para fora do login-box -->
+  <!-- Créditos -->
   <div style="position: fixed; bottom: 10px; right: 10px; color: white;">
     Desenvolvido por Guilherme Graciano e Pâmela Fernandes Pereira
   </div>
@@ -35,16 +35,13 @@
   <script>
     // Aplica tema salvo
     document.addEventListener('DOMContentLoaded', () => {
-      if (localStorage.getItem('darkMode') === 'enabled') {
-        document.body.classList.add('dark-mode');
-        document.querySelector('#themeToggle i').className = 'fas fa-sun';
+      if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark');
       }
 
       document.getElementById('themeToggle').addEventListener('click', () => {
-        document.body.classList.toggle('dark-mode');
-        const icon = document.querySelector('#themeToggle i');
-        icon.className = icon.className.includes('moon') ? 'fas fa-sun' : 'fas fa-moon';
-        localStorage.setItem('darkMode', document.body.classList.contains('dark-mode') ? 'enabled' : 'disabled');
+        document.body.classList.toggle('dark');
+        localStorage.setItem('darkMode', document.body.classList.contains('dark'));
       });
     });
   </script>

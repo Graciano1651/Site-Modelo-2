@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard de Férias</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -27,6 +27,7 @@
 
     <div class="content">
       <h1><i class="fas fa-chart-pie"></i> Visão Geral</h1>
+
       <div class="stats-grid">
         <div class="stat-card clickable" onclick="window.location.href='list-todos.html'">
           <div class="stat-icon"><i class="fas fa-users"></i></div>
@@ -36,7 +37,7 @@
           </div>
         </div>
 
-        <div class="stat-card clickable" onclick="window.location.href='list-ferias.html'">
+        <div class="stat-card clickable" onclick="window.location.href='list-em-ferias.html'">
           <div class="stat-icon"><i class="fas fa-plane-departure"></i></div>
           <div class="stat-info">
             <h3>Em Férias</h3>
@@ -45,7 +46,7 @@
         </div>
 
         <div class="stat-card clickable" onclick="window.location.href='list-disponiveis.html'">
-          <div class="stat-icon"><i class="fas fa-clock"></i></div>
+          <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
           <div class="stat-info">
             <h3>Férias Disponíveis</h3>
             <p id="availableVacation">0</p>
@@ -63,9 +64,31 @@
     </div>
   </div>
 
-  <!-- Scripts EM ORDEM CORRETA -->
-  <script src="supabase.js"></script>
+   <script src="supabase.js"></script>
   <script src="utils.js"></script>
   <script src="dashboard.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark');
+      }
+
+      document.getElementById('themeToggle').addEventListener('click', () => {
+        document.body.classList.toggle('dark');
+        localStorage.setItem('darkMode', document.body.classList.contains('dark'));
+      });
+
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        sessionStorage.removeItem('currentUser');
+        window.location.href = 'login.html';
+      });
+
+      // Esconde links de admin se não for admin
+      const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+      if (!currentUser?.is_admin) {
+        document.getElementById('adminLinks').style.display = 'none';
+      }
+    });
+  </script>
 </body>
 </html>

@@ -31,52 +31,33 @@
         </button>
       </form>
 
-    <div id="loadingFeedback" style="display: none; text-align: center; margin: 1rem 0; color: var(--primary);">
+      <div id="loadingFeedback" style="display: none; text-align: center; margin: 1rem 0; color: var(--primary);">
         <i class="fas fa-spinner fa-spin"></i> Carregando sistema...
       </div>
 
-      <div id="errorFeedback" style="display: none; text-align: center; margin: 1rem 0; padding: 0.5rem; background-color: rgba(247, 37, 133, 0.1); border-radius: 5px;">
-        <i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i>
-        <span id="errorText" style="color: var(--danger);"></span>
+      <div id="errorFeedback" style="display: none; text-align: center; margin: 1rem 0; padding: 0.5rem; background-color: #ffcccc; color: #900;">
+        <i class="fas fa-exclamation-circle"></i> Usuário ou senha inválidos.
+      </div>
+
+      <div style="text-align: right; margin-top: 1rem;">
+        <button id="themeToggle" class="btn-theme"><i class="fas fa-moon"></i></button>
       </div>
     </div>
   </div>
-
-  <!-- Scripts EM ORDEM CORRETA -->
   <script src="supabase.js"></script>
   <script src="utils.js"></script>
   <script src="login.js"></script>
-
-  <script>
-    // Sistema de inicialização seguro
-    async function initApp() {
-      document.getElementById('loadingFeedback').style.display = 'block';
-      
-     try {
-        // Espera o Supabase estar pronto
-        if (!window.supabase) {
-          await new Promise((resolve) => {
-            const check = setInterval(() => {
-              if (window.supabase) {
-                clearInterval(check);
-                resolve();
-              }
-            }, 100);
-          });
-        }
-
-        console.log('✅ Sistema pronto para autenticação');
-      } catch (e) {
-        console.error('Erro na inicialização:', e);
-        document.getElementById('errorText').textContent = 'Erro ao carregar o sistema. Recarregue a página.';
-        document.getElementById('errorFeedback').style.display = 'block';
-      } finally {
-        document.getElementById('loadingFeedback').style.display = 'none';
+   <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark');
       }
-    }
 
-    // Inicia o app quando o DOM estiver pronto
-    document.addEventListener('DOMContentLoaded', initApp);
+      document.getElementById('themeToggle').addEventListener('click', () => {
+        document.body.classList.toggle('dark');
+        localStorage.setItem('darkMode', document.body.classList.contains('dark'));
+      });
+    });
   </script>
 </body>
 </html>

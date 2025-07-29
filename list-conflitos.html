@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Conflitos de Férias</title>
   <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
   <div class="container">
@@ -29,8 +29,7 @@
 
   <script src="utils.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script>
-    // Espera o Supabase estar pronto
+   <script>
     async function ensureSupabaseReady() {
       return new Promise((resolve) => {
         if (window.supabase) return resolve();
@@ -39,115 +38,85 @@
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
-      try {
-        const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-        if (!currentUser) {
-          window.location.href = 'login.html';
-          return;
-        }
+      await ensureSupabaseReady();
 
-        await ensureSupabaseReady();
-        applySavedTheme();
-        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-        await loadConflicts();
-      } catch (error) {
-        console.error('Erro na inicialização:', error);
+      const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+      if (!currentUser) {
+        window.location.href = 'login.html';
+        return;
       }
+
+      if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark');
+      }
+
+      document.getElementById('themeToggle').addEventListener('click', () => {
+        document.body.classList.toggle('dark');
+        localStorage.setItem('darkMode', document.body.classList.contains('dark'));
+      });
+
+      await carregarConflitos();
     });
 
-    async function loadConflicts() {
-      try {
-        const { data: employees, error } = await supabase
-          .from('employees')
-          .select('*')
-          .eq('on_vacation', true);
+    async function carregarConflitos() {
+      const { data: funcionarios } = await supabase.from('employees').select('*');
+      const { data: ferias } = await supabase.from('vacation_periods').select('*');
 
-        if (error) throw error;
+      const container = document.getElementById('conflictContainer');
+      container.innerHTML = '';
 
-        const grouped = {};
-        employees.forEach(emp => {
-          if (!grouped[emp.team]) grouped[emp.team] = [];
-          grouped[emp.team].push(emp);
-        });
+      const conflitos = detectarConflitos(ferias, funcionarios);
 
-        const container = document.getElementById('conflictContainer');
-        container.innerHTML = '';
-
-        Object.entries(grouped).forEach(([team, emps]) => {
-          if (emps.length <= 1) return;
-
-          const section = document.createElement('div');
-          section.className = 'team-section';
-          section.innerHTML = `<h3><i class="fas fa-users"></i> Frente ${team}</h3>`;
-
-          emps.forEach(emp => {
-            const card = document.createElement('div');
-            card.className = 'employee-card';
-            card.innerHTML = `
-              <div class="employee-photo">
-                ${emp.photo ? `<img src="${emp.photo}" alt="${emp.name}">` : '<i class="fas fa-user"></i>'}
-              </div>
-              <div class="employee-info">
-                <h3 class="employee-name">${emp.name || 'Não informado'}</h3>
-                <p><strong>Matrícula:</strong> ${emp.matricula || 'N/A'}</p>
-                <p><strong>Início das Férias:</strong> ${window.utils?.formatDate(emp.vacation_start_date) || 'N/A'}</p>
-                <p><strong>Dias:</strong> ${emp.total_vacation_days || '0'}</p>
-                <a class="btn-view" href="profile.html?id=${emp.id}"><i class="fas fa-eye"></i> Ver</a>
-                <button class="btn btn-secondary" onclick="resolverConflito('${emp.id}', '${team}')">
-                  <i class="fas fa-retweet"></i> Remanejar
-                </button>
-              </div>
-            `;
-            section.appendChild(card);
-          });
-          container.appendChild(section);
-        });
-
-        if (!container.hasChildNodes()) {
-          container.innerHTML = `<p><i class="fas fa-check-circle"></i> Nenhum conflito detectado.</p>`;
-        }
-
-        // Adiciona a função global para resolver conflitos
-        window.resolverConflito = async (id, team) => {
-          try {
-            const { value: newDate } = await Swal.fire({
-              title: 'Remanejar férias?',
-              html: 'Digite a nova data de início (AAAA-MM-DD):',
-              input: 'text',
-              inputPlaceholder: '2023-12-01',
-              showCancelButton: true,
-              confirmButtonText: 'Confirmar',
-              cancelButtonText: 'Cancelar',
-              inputValidator: (value) => {
-                if (!value || !Date.parse(value)) {
-                  return 'Data inválida!';
-                }
-              }
-            });
-
-            if (newDate) {
-              const { error } = await supabase
-                .from('employees')
-                .update({ vacation_start_date: newDate })
-                .eq('id', id);
-
-              if (error) throw error;
-              
-              await Swal.fire('Sucesso!', 'Férias remanejadas.', 'success');
-              await loadConflicts();
-            }
-          } catch (error) {
-            console.error('Erro ao remanejar:', error);
-            Swal.fire('Erro!', 'Não foi possível atualizar.', 'error');
-          }
-        };
-
-      } catch (error) {
-        console.error('Erro ao carregar conflitos:', error);
-        document.getElementById('conflictContainer').innerHTML = 
-          '<p style="color: var(--danger);"><i class="fas fa-exclamation-circle"></i> Erro ao carregar conflitos</p>';
+      if (conflitos.length === 0) {
+        container.innerHTML = '<p>Nenhum conflito encontrado.</p>';
+        return;
       }
+
+      conflitos.forEach(([f1, f2]) => {
+        const card = document.createElement('div');
+        card.classList.add('conflict-card');
+        card.innerHTML = `
+          <p><i class="fas fa-user"></i> <strong>${f1}</strong> e <strong>${f2}</strong> estão em conflito de férias!</p>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function detectarConflitos(ferias, funcionarios) {
+      const conflitos = [];
+      const equipeMap = {};
+
+      ferias.forEach(p => {
+        const funcionario = funcionarios.find(f => f.id === p.employee_id);
+        if (!funcionario) return;
+
+        const equipe = funcionario.team;
+        if (!equipeMap[equipe]) equipeMap[equipe] = [];
+
+        equipeMap[equipe].push({ ...p, funcionario });
+      });
+
+      for (const equipe in equipeMap) {
+        const lista = equipeMap[equipe];
+        for (let i = 0; i < lista.length; i++) {
+          for (let j = i + 1; j < lista.length; j++) {
+            if (sobrepoe(lista[i], lista[j])) {
+              conflitos.push([lista[i].funcionario.name, lista[j].funcionario.name]);
+            }
+          }
+        }
+      }
+
+      return conflitos;
+    }
+
+    function sobrepoe(a, b) {
+      const aInicio = new Date(a.start);
+      const aFim = new Date(a.end);
+      const bInicio = new Date(b.start);
+      const bFim = new Date(b.end);
+      return aInicio <= bFim && bInicio <= aFim;
     }
   </script>
 </body>
- </html>
+</html>

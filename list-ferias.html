@@ -28,8 +28,7 @@
           <thead>
             <tr>
               <th>Nome</th>
-              <th>Matrícula</th>
-              <th>Frente</th>
+              <th>Equipe</th>
               <th>Início</th>
               <th>Término</th>
               <th>Visualizar</th>
@@ -46,118 +45,52 @@
   <script src="utils.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
-      try {
-        // Verifica autenticação
-        const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-        if (!currentUser) {
-          window.location.href = 'login.html';
-          return;
-        }
-
-        await ensureSupabaseReady();
-        applySavedTheme();
-        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-        await loadEmployeesOnVacation();
-      } catch (error) {
-        console.error('Erro na inicialização:', error);
-        showError('Erro ao carregar a página');
+      const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+      if (!currentUser) {
+        window.location.href = 'login.html';
+        return;
       }
+
+      if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark');
+      }
+
+      document.getElementById('themeToggle').addEventListener('click', () => {
+        document.body.classList.toggle('dark');
+        localStorage.setItem('darkMode', document.body.classList.contains('dark'));
+      });
+
+      await carregarFeriasAtivas();
     });
 
-    async function ensureSupabaseReady() {
-      return new Promise((resolve) => {
-        if (window.supabase) return resolve();
-        document.addEventListener('supabase-ready', () => resolve());
+    async function carregarFeriasAtivas() {
+      const hoje = new Date();
+      const { data: ferias } = await supabase.from('vacation_periods').select('*');
+      const { data: funcionarios } = await supabase.from('employees').select('*');
+
+      const ativos = ferias.filter(p => {
+        const inicio = new Date(p.start);
+        const fim = new Date(p.end);
+        return inicio <= hoje && hoje <= fim;
       });
-    }
 
-    async function loadEmployeesOnVacation() {
-      try {
-        const tbody = document.getElementById('vacationTable');
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
+      const tabela = document.getElementById('vacationTable');
+      tabela.innerHTML = '';
 
-        // Busca todos os funcionários com on_vacation = true
-        const { data: employees, error: empError } = await supabase
-          .from('employees')
-          .select('*')
-          .eq('on_vacation', true);
+      ativos.forEach(p => {
+        const f = funcionarios.find(emp => emp.id === p.employee_id);
+        if (!f) return;
 
-        if (empError) throw empError;
-
-        if (!employees || employees.length === 0) {
-          tbody.innerHTML = `
-            <tr>
-              <td colspan="6" style="text-align: center;">
-                Nenhum funcionário em férias no momento
-              </td>
-            </tr>
-          `;
-          return;
-        }
-
-        // Busca os períodos de férias para esses funcionários
-        const employeeIds = employees.map(emp => emp.id);
-        const { data: periods, error: perError } = await supabase
-          .from('vacation_periods')
-          .select('*')
-          .in('employee_id', employeeIds);
-
-        if (perError) throw perError;
-
-        // Limpa a tabela
-        tbody.innerHTML = '';
-
-        // Preenche a tabela com os dados combinados
-        employees.forEach(emp => {
-          const empPeriods = periods ? periods.filter(p => p.employee_id === emp.id) : [];
-          
-          if (empPeriods.length === 0) {
-            // Mostra pelo menos o funcionário mesmo sem períodos cadastrados
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td>${emp.name || 'Não informado'}</td>
-              <td>${emp.matricula || 'N/A'}</td>
-              <td>${emp.team || 'N/A'}</td>
-              <td>N/A</td>
-              <td>N/A</td>
-              <td><a href="profile.html?id=${emp.id}" class="btn-view"><i class="fas fa-eye"></i> Ver</a></td>
-            `;
-            tbody.appendChild(tr);
-          } else {
-            empPeriods.forEach(period => {
-              const startDate = new Date(period.start_date);
-              const endDate = new Date(startDate);
-              endDate.setDate(startDate.getDate() + period.days);
-
-              const tr = document.createElement('tr');
-              tr.innerHTML = `
-                <td>${emp.name || 'Não informado'}</td>
-                <td>${emp.matricula || 'N/A'}</td>
-                <td>${emp.team || 'N/A'}</td>
-                <td>${window.utils.formatDate(period.start_date) || 'N/A'}</td>
-                <td>${window.utils.formatDate(endDate) || 'N/A'}</td>
-                <td><a href="profile.html?id=${emp.id}" class="btn-view"><i class="fas fa-eye"></i> Ver</a></td>
-              `;
-              tbody.appendChild(tr);
-            });
-          }
-        });
-
-      } catch (error) {
-        console.error('Erro ao carregar funcionários em férias:', error);
-        showError('Erro ao carregar lista de férias');
-      }
-    }
-
-    function showError(message) {
-      const tbody = document.getElementById('vacationTable');
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="6" style="text-align: center; color: var(--danger);">
-            ${message}
-          </td>
-        </tr>
-      `;
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${f.name}</td>
+          <td>${f.team}</td>
+          <td>${new Date(p.start).toLocaleDateString('pt-BR')}</td>
+          <td>${new Date(p.end).toLocaleDateString('pt-BR')}</td>
+          <td><a href="profile.html?id=${f.id}" class="btn btn-primary btn-sm"><i class="fas fa-eye"></i></a></td>
+        `;
+        tabela.appendChild(row);
+      });
     }
   </script>
 </body>
