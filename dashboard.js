@@ -1,101 +1,62 @@
-async function ensureSupabaseReady() {
-  return new Promise((resolve) => {
-    if (window.supabase) return resolve();
-    document.addEventListener('supabase-ready', () => resolve());
-  });
-}
-
 document.addEventListener('DOMContentLoaded', async () => {
-  await ensureSupabaseReady();
-  const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-  if (!currentUser) {
+  const user = await getCurrentUser();
+  if (!user) {
     window.location.href = 'login.html';
     return;
   }
 
-  const { funcionarios, ferias } = await carregarDashboard();
-  atualizarUI(funcionarios, ferias);
+  const userProfile = await getUserProfile(user.id);
+  const isAdmin = userProfile?.is_admin;
+
+  const cadastrarBtn = document.getElementById('cadastrarFuncionarioBtn');
+  if (cadastrarBtn) {
+    cadastrarBtn.style.display = isAdmin ? 'inline-block' : 'none';
+  }
+
+  document.getElementById('username').textContent = userProfile?.username || 'Usuário';
+
+  await carregarDadosDashboard();
 });
 
-async function carregarDashboard() {
+async function carregarDadosDashboard() {
   try {
-    const { data: funcionarios = [], error: errFunc } = await supabase
+    const { data: employees, error } = await supabase
       .from('employees')
       .select('*');
 
-    if (errFunc) throw errFunc;
+    if (error) throw error;
 
-    const { data: ferias = [], error: errFerias } = await supabase
+    const totalArmarios = employees.length;
+    const b2c = employees.filter(emp => emp.tipo === 'B2C').length;
+    const b2b = employees.filter(emp => emp.tipo === 'B2B').length;
+
+    document.getElementById('totalArmarios').textContent = totalArmarios;
+    document.getElementById('b2c').textContent = b2c;
+    document.getElementById('b2b').textContent = b2b;
+
+    const agora = new Date();
+    const mesAtual = agora.getMonth() + 1;
+    const anoAtual = agora.getFullYear();
+
+    const { data: ferias, error: feriasError } = await supabase
       .from('vacation_periods')
-      .select('*');
+      .select('employee_id, start_date')
+      .gte('start_date', `${anoAtual}-${mesAtual.toString().padStart(2, '0')}-01`)
+      .lte('start_date', `${anoAtual}-${mesAtual.toString().padStart(2, '0')}-31`);
 
-    if (errFerias) throw errFerias;
+    if (feriasError) throw feriasError;
 
-    return { funcionarios, ferias };
-  } catch (error) {
-    console.error('Erro ao carregar dados:', error);
-    return { funcionarios: [], ferias: [] };
+    const emFeriasIds = ferias.map(f => f.employee_id);
+    const concluidos = employees.filter(emp => emFeriasIds.includes(emp.id)).length;
+    const pendentes = employees.filter(emp => !emp.ferias_confirmadas).length;
+    const propensos = employees.filter(emp =>
+      emp.status === 'ativo' && emp.ferias_disponiveis
+    ).length;
+
+    document.getElementById('concluidos').textContent = concluidos;
+    document.getElementById('pendentes').textContent = pendentes;
+    document.getElementById('propensos').textContent = propensos;
+  } catch (err) {
+    console.error('Erro ao carregar dados do dashboard:', err.message);
   }
 }
-
- function atualizarUI(funcionarios, ferias) {
-  try {
-    const hoje = new Date();
-    const emFeriasIds = new Set(
-      ferias.filter(p => {
-        const inicio = new Date(p.start);
-        const fim = new Date(p.end);
-        return inicio <= hoje && hoje <= fim;
-      }).map(p => p.employee_id)
-    );
-
-    const total = funcionarios.length;
-    const emFerias = funcionarios.filter(f => emFeriasIds.has(f.id)).length;
-    const disponiveis = funcionarios.filter(f => !emFeriasIds.has(f.id)).length;
-    const conflitos = detectarConflitos(ferias, funcionarios).length;
-
-    document.getElementById('totalEmployees').textContent = total;
-    document.getElementById('onVacation').textContent = emFerias;
-    document.getElementById('availableVacation').textContent = disponiveis;
-    document.getElementById('conflicts').textContent = conflitos;
-  } catch (error) {
-    console.error('Erro ao atualizar UI:', error);
-  }
-}
-
- function detectarConflitos(ferias, funcionarios) {
-  const conflitos = [];
-  const equipeMap = {};
-
-  ferias.forEach(p => {
-    const funcionario = funcionarios.find(f => f.id === p.employee_id);
-    if (!funcionario) return;
-
-    const equipe = funcionario.team;
-    if (!equipeMap[equipe]) equipeMap[equipe] = [];
-
-    equipeMap[equipe].push({ ...p, funcionario });
-  });
-
-  for (const equipe in equipeMap) {
-    const lista = equipeMap[equipe];
-    for (let i = 0; i < lista.length; i++) {
-      for (let j = i + 1; j < lista.length; j++) {
-        if (sobrepoe(lista[i], lista[j])) {
-          conflitos.push([lista[i].funcionario.name, lista[j].funcionario.name]);
-        }
-      }
-    }
-  }
-
-  return conflitos;
-}
-
-function sobrepoe(a, b) {
-  const aInicio = new Date(a.start);
-  const aFim = new Date(a.end);
-  const bInicio = new Date(b.start);
-  const bFim = new Date(b.end);
-  return aInicio <= bFim && bInicio <= aFim;
-}
- 
