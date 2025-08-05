@@ -1,19 +1,19 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <script src="supabase.js"></script>
+  <script src="../js/supabase.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Férias Disponíveis</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <title>Todos os Funcionários</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
   <div class="container">
     <div class="header">
       <div class="logo">
-        <i class="fas fa-clock"></i>
-        <span>Férias Disponíveis</span>
+        <i class="fas fa-users"></i>
+        <span>Funcionários Cadastrados</span>
       </div>
       <div class="nav-links">
         <a href="dashboard.html"><i class="fas fa-arrow-left"></i> Voltar</a>
@@ -22,7 +22,8 @@
     </div>
 
     <div class="content">
-      <h2><i class="fas fa-check-circle"></i> Funcionários com Férias Disponíveis</h2>
+      <h2><i class="fas fa-list"></i> Lista Completa</h2>
+      <input type="text" id="searchInput" class="form-control" placeholder="Buscar por nome" />
       <div class="table-responsive" style="margin-top: 1rem;">
         <table>
           <thead>
@@ -32,7 +33,7 @@
               <th>Visualizar</th>
             </tr>
           </thead>
-          <tbody id="availableTable">
+          <tbody id="employeeTable">
             <!-- Dados via JS -->
           </tbody>
         </table>
@@ -40,8 +41,8 @@
     </div>
   </div>
 
-  <script src="utils.js"></script>
-  <script>
+  <script src="../js/utils.js"></script>
+   <script>
     async function ensureSupabaseReady() {
       return new Promise((resolve) => {
         if (window.supabase) return resolve();
@@ -67,27 +68,21 @@
         localStorage.setItem('darkMode', document.body.classList.contains('dark'));
       });
 
-      await carregarDisponiveis();
+      const { data: funcionarios } = await supabase.from('employees').select('*');
+      renderFuncionarios(funcionarios);
+
+      document.getElementById('searchInput').addEventListener('input', e => {
+        const termo = e.target.value.toLowerCase();
+        const filtrados = funcionarios.filter(f => f.name.toLowerCase().includes(termo));
+        renderFuncionarios(filtrados);
+      });
     });
 
-    async function carregarDisponiveis() {
-      const { data: funcionarios } = await supabase.from('employees').select('*');
-      const { data: ferias } = await supabase.from('vacation_periods').select('*');
-
-      const hoje = new Date();
-      const idsEmFerias = new Set(
-        ferias.filter(p => {
-          const inicio = new Date(p.start);
-          const fim = new Date(p.end);
-          return inicio <= hoje && hoje <= fim;
-        }).map(p => p.employee_id)
-      );
-
-      const disponiveis = funcionarios.filter(f => !idsEmFerias.has(f.id));
-      const tabela = document.getElementById('availableTable');
+    function renderFuncionarios(lista) {
+      const tabela = document.getElementById('employeeTable');
       tabela.innerHTML = '';
 
-      disponiveis.forEach(f => {
+      lista.forEach(f => {
         const row = document.createElement('tr');
         row.innerHTML = `
           <td>${f.name}</td>
