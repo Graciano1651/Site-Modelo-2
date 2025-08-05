@@ -72,3 +72,17 @@ window.utils = {
 // Disponibiliza funções de tema globalmente
 window.toggleTheme = toggleTheme;
 window.applySavedTheme = applySavedTheme;
+
+// =============================================
+// FUNÇÃO DE VERIFICAÇÃO DE USUÁRIO LOGADO
+// =============================================
+function getCurrentUser() {
+  const user = sessionStorage.getItem("currentUser");
+  if (!user) {
+    window.location.href = "login.html";
+    throw new Error("Usuário não autenticado");
+  }
+  return JSON.parse(user);
+}
+
+window.getCurrentUser = getCurrentUser;
