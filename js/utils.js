@@ -86,3 +86,34 @@ function getCurrentUser() {
 }
 
 window.getCurrentUser = getCurrentUser;
+
+/**
+ * Obtém os dados do usuário atualmente logado, incluindo se é admin.
+ * @returns {Promise<Object|null>} Retorna o usuário ou null se não logado.
+ */
+export async function getCurrentUser() {
+  const { data: { user }, error } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    console.warn('Usuário não autenticado.');
+    return null;
+  }
+
+  const { data: userData, error: userError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  if (userError || !userData) {
+    console.warn('Dados adicionais do usuário não encontrados.');
+    return null;
+  }
+
+  return {
+    id: user.id,
+    email: user.email,
+    is_admin: userData.is_admin,
+    ...userData
+  };
+}

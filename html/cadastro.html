@@ -1,81 +1,56 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <script src="../js/supabase.js"></script>
+  
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Cadastro de Funcionários</title>
-  <link rel="stylesheet" href="../css/style.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <title>Cadastro de Funcionário</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <div class="logo">
-        <i class="fas fa-umbrella-beach"></i>
-        <span>Cadastro Férias</span>
-      </div>
-      <div class="nav-links">
-        <a href="cadastro.html"><i class="fas fa-user-plus"></i> Cadastro</a>
-        <a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-        <button id="themeToggle" class="btn-theme"><i class="fas fa-moon"></i></button>
-      </div>
-    </div>
-
+   <div class="container">
     <div class="content">
-      <h1><i class="fas fa-user-edit"></i> Cadastro de Funcionário</h1>
+     <form id="employeeForm" class="form-grid">
+        <button type="button" id="clearBtn" class="btn btn-warning">
+          <i class="fas fa-eraser"></i> Limpar
+        </button>
 
-      <form id="employeeForm" class="form-grid">
-        <input type="hidden" id="employeeId"/>
-
-        <div class="form-group">
-          <label for="name"><i class="fas fa-user"></i> Nome Completo</label>
-          <input type="text" id="name" class="form-control" required />
-        </div>
-
-        <div class="form-group">
-          <label for="role"><i class="fas fa-briefcase"></i> Cargo</label>
-          <input type="text" id="role" class="form-control" required />
-        </div>
-
-        <div class="form-group">
-          <label for="team"><i class="fas fa-users"></i> Equipe</label>
-          <input type="text" id="team" class="form-control" required />
-        </div>
-
-        <div class="form-group">
-          <label><i class="fas fa-image"></i> Foto</label>
-          <div id="photoPreview" class="photo-preview">
-            <i class="fas fa-user"></i>
-          </div>
-          <input type="file" id="photoInput" accept="image/*" style="display: none;" />
-          <button type="button" id="uploadBtn" class="btn btn-secondary">Escolher Foto</button>
-        </div>
-
-        <div class="form-group full-width">
-          <label for="vacations"><i class="fas fa-calendar-alt"></i> Períodos de Férias (JSON)</label>
-          <textarea id="vacations" class="form-control" placeholder='[{"start":"2025-12-01","end":"2025-12-15"}]'></textarea>
-        </div>
-
-        <div class="form-group full-width">
-          <button type="submit" id="saveButton" class="btn btn-primary"><i class="fas fa-save"></i> Salvar Funcionário</button>
-          <button type="button" id="clearBtn" class="btn btn-warning"><i class="fas fa-eraser"></i> Limpar</button>
-        </div>
+        <button id="newUserBtn" class="btn btn-info" style="display:none; margin-top: 1rem;">
+          <i class="fas fa-user-plus"></i> Novo Funcionário
+        </button>
       </form>
- 
-      <button id="newUserBtn" class="btn btn-info" style="display:none; margin-top: 1rem;"><i class="fas fa-plus"></i> Novo Funcionário</button>
     </div>
   </div>
- 
-  <script src="../js/utils.js"></script>
-  <script src="../js/form.js"></script>
+
+  <!-- Verificação de admin e carregamento dinâmico do form.js -->
+  <script type="module">
+    import { getCurrentUser } from '../js/utils.js';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await getCurrentUser();
+
+      if (!user?.is_admin) {
+        alert("Acesso não autorizado. Redirecionando...");
+        window.location.href = "dashboard.html";
+        return;
+      }
+
+      // Carregar form.js apenas para admin
+      const script = document.createElement('script');
+      script.src = '../js/form.js';
+      document.body.appendChild(script);
+    });
+  </script>
+
+  <!-- Suporte ao modo escuro (darkMode) -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       if (localStorage.getItem('darkMode') === 'true') {
         document.body.classList.add('dark');
       }
 
-      document.getElementById('themeToggle').addEventListener('click', () => {
+      document.getElementById('themeToggle')?.addEventListener('click', () => {
         document.body.classList.toggle('dark');
         localStorage.setItem('darkMode', document.body.classList.contains('dark'));
       });
