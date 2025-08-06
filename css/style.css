@@ -855,3 +855,46 @@ body.dark-mode .login-box .btn-theme {
 @keyframes spin {
   to { transform: translateY(-50%) rotate(360deg); }
 }
+
+/* Loading State */
+body.loading {
+  position: relative;
+  pointer-events: none;
+}
+
+body.loading::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  z-index: 9998;
+}
+
+body.loading::before {
+  content: 'Carregando...';
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  background: var(--primary);
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  font-weight: bold;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.8; }
+  50% { opacity: 1; }
+  100% { opacity: 0.8; }
+}
+
+/* Melhoria para dark mode */
+body.dark-mode.loading::after {
+  background: rgba(0, 0, 0, 0.8);
+}

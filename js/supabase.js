@@ -1,8 +1,7 @@
 const supabaseUrl = 'https://kqvhbcbjrkyfknegnbce.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxdmhiY2Jqcmt5ZmtuZWduYmNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0NTg0NjUsImV4cCI6MjA2NDAzNDQ2NX0.6fHcOtVH59DVJ3J2KF19phtiCriAsHDr5vWLnxwW8kY';
 
-// Inicialização robusta
-(function() {
+ (function() {
   if (window.supabase) return;
 
   const script = document.createElement('script');
@@ -15,9 +14,9 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
         detectSessionInUrl: true
       }
     });
-    console.log('✅ Supabase inicializado com sucesso');
-    document.dispatchEvent(new Event('supabase-ready'));
+
+    console.log('✅ Supabase inicializado');
+    document.dispatchEvent(new Event('supabase-ready')); // 🔔 Sinaliza que está pronto
   };
-  script.onerror = () => console.error('❌ Falha ao carregar Supabase');
-  document.head.appendChild(script);
+   document.head.appendChild(script);
 })();
