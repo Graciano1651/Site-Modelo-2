@@ -82,33 +82,35 @@
       });
     }
 
-    function detectarConflitos(ferias, funcionarios) {
-      const conflitos = [];
-      const equipeMap = {};
+    async function carregarConflitos() {
+  try {
+    const { data: conflitos, error } = await supabase.rpc('get_conflicts');
+    
+    if (error) throw error;
 
-      ferias.forEach(p => {
-        const funcionario = funcionarios.find(f => f.id === p.employee_id);
-        if (!funcionario) return;
+    const container = document.getElementById('conflictContainer');
+    container.innerHTML = '';
 
-        const equipe = funcionario.team;
-        if (!equipeMap[equipe]) equipeMap[equipe] = [];
-
-        equipeMap[equipe].push({ ...p, funcionario });
-      });
-
-      for (const equipe in equipeMap) {
-        const lista = equipeMap[equipe];
-        for (let i = 0; i < lista.length; i++) {
-          for (let j = i + 1; j < lista.length; j++) {
-            if (sobrepoe(lista[i], lista[j])) {
-              conflitos.push([lista[i].funcionario.name, lista[j].funcionario.name]);
-            }
-          }
-        }
-      }
-
-      return conflitos;
+    if (conflitos.length === 0) {
+      container.innerHTML = '<p>Nenhum conflito encontrado.</p>';
+      return;
     }
+
+    conflitos.forEach(conflito => {
+      const card = document.createElement('div');
+      card.classList.add('conflict-card');
+      card.innerHTML = `
+        <h3>Equipe: ${conflito.team_name}</h3>
+        <p><i class="fas fa-user"></i> ${conflito.employee1_name} e ${conflito.employee2_name}</p>
+        <p><i class="fas fa-calendar-times"></i> Conflito: ${formatDate(conflito.conflict_start)} - ${formatDate(conflito.conflict_end)}</p>
+      `;
+      container.appendChild(card);
+    });
+  } catch (error) {
+    console.error('Erro ao carregar conflitos:', error);
+    Swal.fire('Erro', 'Não foi possível carregar os conflitos', 'error');
+  }
+}
 
     function sobrepoe(a, b) {
       const aInicio = new Date(a.start);

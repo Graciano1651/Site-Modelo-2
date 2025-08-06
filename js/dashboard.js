@@ -1,85 +1,69 @@
-import { getCurrentUser } from './utils.js';
-import { supabase } from './supabase.js';
-
-document.addEventListener('DOMContentLoaded', async () => {
+ document.addEventListener('DOMContentLoaded', async () => {
   const user = await getCurrentUser();
-  // Verificar se é admin e mostrar botão de cadastro
-  const cadastroBtn = document.getElementById('btnCadastro');
-  if (user?.is_admin) {
-    cadastroBtn.style.display = 'inline-block'; // ou 'flex', conforme o layout
-  } else if (cadastroBtn) {
-    cadastroBtn.style.display = 'none';
-  }
-
-  await carregarResumoDashboard();
-});
-
-async function carregarResumoDashboard() {
-  const { data: employees, error } = await supabase
-    .from('employees')
-    .select('id, nome');
-
-  const { data: ferias, error: errorFerias } = await supabase
-    .from('vacation_periods')
-    .select('*');
-
-  if (error || errorFerias) {
-    console.error('Erro ao carregar dados do Supabase:', error || errorFerias);
+  if (!user) {
+    window.location.href = 'login.html';
     return;
   }
 
-  const totalFuncionarios = employees.length;
-  const agora = new Date();
-  const mesAtual = agora.getMonth() + 1;
-  const anoAtual = agora.getFullYear();
+  const userProfile = await getUserProfile(user.id);
+  const isAdmin = userProfile?.is_admin;
 
-  const emFerias = ferias.filter(f => {
-    const inicio = new Date(f.inicio);
-    const fim = new Date(f.fim);
-    return inicio.getMonth() + 1 === mesAtual && inicio.getFullYear() === anoAtual;
-  });
+  document.getElementById('username').textContent = userProfile?.name || 'Usuário';
 
-  const disponiveis = employees.filter(emp => {
-    const feriasDoFuncionario = ferias.filter(f => f.funcionario_id === emp.id);
-    return feriasDoFuncionario.length === 0;
-  });
+  await carregarDadosDashboard();
+});
 
-  const conflitos = detectarConflitos(ferias);
+async function carregarDadosDashboard() {
+  try {
+    const hoje = new Date();
+    
+    // Busca funcionários com seus períodos de férias
+    const { data: employees, error: empError } = await supabase
+      .from('employees')
+      .select(`
+        *,
+        vacation_periods (
+          start_date,
+          end_date
+        )
+      `);
 
-  document.getElementById('totalFuncionarios').textContent = totalFuncionarios;
-  document.getElementById('totalEmFerias').textContent = emFerias.length;
-  document.getElementById('totalDisponiveis').textContent = disponiveis.length;
-  document.getElementById('totalConflitos').textContent = conflitos.length;
-}
+    if (empError) throw empError;
 
-function detectarConflitos(ferias) {
-  const conflitos = [];
+    // Calcula estatísticas
+    const totalFuncionarios = employees.length;
+    
+    const emFerias = employees.filter(emp => 
+      emp.vacation_periods.some(p => {
+        const inicio = new Date(p.start_date);
+        const fim = new Date(p.end_date);
+        return inicio <= hoje && hoje <= fim;
+      })
+    ).length;
 
-  const agrupadosPorEquipe = {};
-  for (const f of ferias) {
-    if (!agrupadosPorEquipe[f.equipe]) agrupadosPorEquipe[f.equipe] = [];
-    agrupadosPorEquipe[f.equipe].push(f);
+    const disponiveis = employees.filter(emp => 
+      !emp.vacation_periods.some(p => {
+        const inicio = new Date(p.start_date);
+        const fim = new Date(p.end_date);
+        return inicio <= hoje && hoje <= fim;
+      }) && 
+      window.utils.calcDisponibilidade(emp.hire_date, emp.last_vacation)
+    ).length;
+
+    // Busca conflitos
+    const { data: conflitos, error: conflitosError } = await supabase
+      .rpc('get_conflicts');
+    
+    if (conflitosError) throw conflitosError;
+
+    // Atualiza a UI
+    document.getElementById('totalEmployees').textContent = totalFuncionarios;
+    document.getElementById('onVacation').textContent = emFerias;
+    document.getElementById('availableVacation').textContent = disponiveis;
+    document.getElementById('conflicts').textContent = conflitos.length;
+
+  } catch (err) {
+    console.error('Erro ao carregar dados do dashboard:', err);
+    Swal.fire('Erro', 'Não foi possível carregar os dados do dashboard', 'error');
   }
-
-  for (const equipe in agrupadosPorEquipe) {
-    const periodos = agrupadosPorEquipe[equipe];
-    for (let i = 0; i < periodos.length; i++) {
-      for (let j = i + 1; j < periodos.length; j++) {
-        const a = periodos[i];
-        const b = periodos[j];
-
-        const aInicio = new Date(a.inicio);
-        const aFim = new Date(a.fim);
-        const bInicio = new Date(b.inicio);
-        const bFim = new Date(b.fim);
-
-        const sobrepoe = aInicio <= bFim && bInicio <= aFim;
-        if (sobrepoe) {
-          conflitos.push({ a, b });
-        }
-      }
-    }
-  }
-
-  return conflitos;
 }

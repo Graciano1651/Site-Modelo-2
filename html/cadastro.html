@@ -43,6 +43,26 @@
     });
   </script>
 
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Configura datepicker para campos de data
+    flatpickr("#hire_date", {
+      dateFormat: "Y-m-d",
+      allowInput: true
+    });
+
+    // Configura tema
+    if (localStorage.getItem('darkMode') === 'true') {
+      document.body.classList.add('dark');
+    }
+
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      document.body.classList.toggle('dark');
+      localStorage.setItem('darkMode', document.body.classList.contains('dark'));
+    });
+  });
+</script>
+
   <!-- Suporte ao modo escuro (darkMode) -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
