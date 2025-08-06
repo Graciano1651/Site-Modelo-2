@@ -1,16 +1,21 @@
- document.addEventListener('DOMContentLoaded', async () => {
-  const user = await getCurrentUser();
-  if (!user) {
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      window.location.href = 'login.html';
+      return;
+    }
+
+    const userProfile = await getUserProfile(user.id);
+    const isAdmin = userProfile?.is_admin;
+
+    document.getElementById('username').textContent = userProfile?.name || 'Usuário';
+
+    await carregarDadosDashboard();
+  } catch (error) {
+    console.error('Erro na inicialização do dashboard:', error);
     window.location.href = 'login.html';
-    return;
   }
-
-  const userProfile = await getUserProfile(user.id);
-  const isAdmin = userProfile?.is_admin;
-
-  document.getElementById('username').textContent = userProfile?.name || 'Usuário';
-
-  await carregarDadosDashboard();
 });
 
 async function carregarDadosDashboard() {
@@ -34,7 +39,7 @@ async function carregarDadosDashboard() {
     const totalFuncionarios = employees.length;
     
     const emFerias = employees.filter(emp => 
-      emp.vacation_periods.some(p => {
+      emp.vacation_periods?.some(p => {
         const inicio = new Date(p.start_date);
         const fim = new Date(p.end_date);
         return inicio <= hoje && hoje <= fim;
@@ -42,7 +47,7 @@ async function carregarDadosDashboard() {
     ).length;
 
     const disponiveis = employees.filter(emp => 
-      !emp.vacation_periods.some(p => {
+      !emp.vacation_periods?.some(p => {
         const inicio = new Date(p.start_date);
         const fim = new Date(p.end_date);
         return inicio <= hoje && hoje <= fim;

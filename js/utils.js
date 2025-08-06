@@ -15,7 +15,7 @@ function formatStatus(status) {
 }
 
 // =============================================
-// FUNÇÕES DE TEMA (CORREÇÃO DO ERRO ATUAL)
+// FUNÇÕES DE TEMA
 // =============================================
 function toggleTheme() {
   document.body.classList.toggle('dark-mode');
@@ -42,7 +42,7 @@ function updateThemeIcon() {
 }
 
 // =============================================
-// FUNÇÕES DE DISPONIBILIDADE (ORIGINAIS)
+// FUNÇÕES DE DISPONIBILIDADE
 // =============================================
 function calcDisponibilidade(hireDate, lastVacationDate) {
   if (!hireDate) return false;
@@ -118,21 +118,36 @@ async function createConflictsFunction() {
 }
 
 // ===============================
-// Função adicionada por mim 👇
+// Função de obtenção do usuário atual (Versão única)
 // ===============================
+async function getCurrentUser() {
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error || !user) {
+      console.warn('Usuário não autenticado.');
+      return null;
+    }
 
-/**
- * Calcula se o funcionário tem férias disponíveis com base na data de admissão e última saída.
- * Retorna true se já passou mais de 1 ano desde a última saída ou da contratação.
- */
-window.utils = window.utils || {};
-window.utils.calcDisponibilidade = function(hireDate, lastVacationDate) {
-  const hoje = new Date();
-  const dataBase = lastVacationDate ? new Date(lastVacationDate) : new Date(hireDate);
-  const umAnoDepois = new Date(dataBase);
-  umAnoDepois.setFullYear(umAnoDepois.getFullYear() + 1);
-  return hoje >= umAnoDepois;
-};
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (userError) throw userError;
+    
+    return {
+      id: user.id,
+      email: user.email,
+      is_admin: userData.is_admin,
+      ...userData
+    };
+  } catch (error) {
+    console.error('Erro ao obter usuário:', error);
+    return null;
+  }
+}
 
 // =============================================
 // EXPORTAÇÃO DAS FUNÇÕES (MANTENDO COMPATIBILIDADE)
@@ -140,54 +155,11 @@ window.utils.calcDisponibilidade = function(hireDate, lastVacationDate) {
 window.utils = {
   formatDate,
   formatStatus,
-  calcDisponibilidade
+  calcDisponibilidade,
+  formatVacationPeriod
 };
 
 // Disponibiliza funções de tema globalmente
 window.toggleTheme = toggleTheme;
 window.applySavedTheme = applySavedTheme;
-
-// =============================================
-// FUNÇÃO DE VERIFICAÇÃO DE USUÁRIO LOGADO
-// =============================================
-function getCurrentUser() {
-  const user = sessionStorage.getItem("currentUser");
-  if (!user) {
-    window.location.href = "login.html";
-    throw new Error("Usuário não autenticado");
-  }
-  return JSON.parse(user);
-}
-
 window.getCurrentUser = getCurrentUser;
-
-/**
- * Obtém os dados do usuário atualmente logado, incluindo se é admin.
- * @returns {Promise<Object|null>} Retorna o usuário ou null se não logado.
- */
-export async function getCurrentUser() {
-  const { data: { user }, error } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    console.warn('Usuário não autenticado.');
-    return null;
-  }
-
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-
-  if (userError || !userData) {
-    console.warn('Dados adicionais do usuário não encontrados.');
-    return null;
-  }
-
-  return {
-    id: user.id,
-    email: user.email,
-    is_admin: userData.is_admin,
-    ...userData
-  };
-}
