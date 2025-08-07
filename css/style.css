@@ -898,3 +898,62 @@ body.loading::before {
 body.dark-mode.loading::after {
   background: rgba(0, 0, 0, 0.8);
 }
+
+/* User Area */
+.user-area {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  background: rgba(255,255,255,0.1);
+}
+
+.user-info i {
+  font-size: 1.2rem;
+  color: var(--light);
+  transition: all 0.3s;
+}
+
+.user-info i.admin {
+  color: var(--success);
+  animation: pulse 2s infinite;
+}
+
+/* Admin Section */
+.admin-section {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: rgba(0,0,0,0.05);
+  border-radius: 10px;
+}
+
+.admin-links {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.btn-admin {
+  padding: 0.75rem 1.5rem;
+  background: var(--primary);
+  color: white;
+  border-radius: 50px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Animations */
+@keyframes pulse {
+  0% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 0.8; transform: scale(1); }
+}

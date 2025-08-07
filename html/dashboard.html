@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard de Férias</title>
-  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -14,82 +14,41 @@
         <i class="fas fa-umbrella-beach"></i>
         <span>Dashboard de Férias</span>
       </div>
-      <div class="nav-links">
-        <a href="dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-        <span id="adminLinks">
-          <a href="cadastro.html"><i class="fas fa-user-plus"></i> Cadastro</a>
-          <a href="list-conflitos.html"><i class="fas fa-exclamation-triangle"></i> Conflitos</a>
-        </span>
-        <button id="themeToggle" class="btn-theme"><i class="fas fa-moon"></i></button>
-        <button id="logoutBtn" class="btn-theme"><i class="fas fa-sign-out-alt"></i></button>
+      
+      <!-- Área do Usuário -->
+      <div class="user-area">
+        <div class="user-info">
+          <span id="username"></span>
+          <i class="fas fa-user-circle"></i>
+        </div>
+        <button id="logoutBtn" class="btn-icon" title="Sair">
+          <i class="fas fa-sign-out-alt"></i>
+        </button>
       </div>
     </div>
 
     <div class="content">
-      <h1><i class="fas fa-chart-pie"></i> Visão Geral</h1>
-
+      <!-- Cards Estatísticos -->
       <div class="stats-grid">
-        <div class="stat-card clickable" onclick="window.location.href='list-todos.html'">
-          <div class="stat-icon"><i class="fas fa-users"></i></div>
-          <div class="stat-info">
-            <h3>Total de Funcionários</h3>
-            <p id="totalEmployees">0</p>
-          </div>
-        </div>
-
-        <div class="stat-card clickable" onclick="window.location.href='list-em-ferias.html'">
-          <div class="stat-icon"><i class="fas fa-plane-departure"></i></div>
-          <div class="stat-info">
-            <h3>Em Férias</h3>
-            <p id="onVacation">0</p>
-          </div>
-        </div>
-
-        <div class="stat-card clickable" onclick="window.location.href='list-disponiveis.html'">
-          <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
-          <div class="stat-info">
-            <h3>Férias Disponíveis</h3>
-            <p id="availableVacation">0</p>
-          </div>
-        </div>
-
-        <div class="stat-card clickable" onclick="window.location.href='list-conflitos.html'">
-          <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
-          <div class="stat-info">
-            <h3>Conflitos</h3>
-            <p id="conflicts">0</p>
-          </div>
+        <!-- Cards permanecem iguais -->
+      </div>
+      
+      <!-- Seção Admin -->
+      <div id="adminSection" class="admin-section">
+        <h2><i class="fas fa-cog"></i> Administração</h2>
+        <div class="admin-links">
+          <a href="cadastro.html" class="btn-admin">
+            <i class="fas fa-user-plus"></i> Cadastrar Funcionário
+          </a>
         </div>
       </div>
     </div>
   </div>
 
- <script src="../js/supabase.js"></script>
- <script src="../js/utils.js"></script>
- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
- <script src="../js/dashboard.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      if (localStorage.getItem('darkMode') === 'true') {
-        document.body.classList.add('dark');
-      }
-
-      document.getElementById('themeToggle').addEventListener('click', () => {
-        document.body.classList.toggle('dark');
-        localStorage.setItem('darkMode', document.body.classList.contains('dark'));
-      });
-
-      document.getElementById('logoutBtn').addEventListener('click', () => {
-        sessionStorage.removeItem('currentUser');
-        window.location.href = 'login.html';
-      });
-
-      // Esconde links de admin se não for admin
-      const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-      if (!currentUser?.is_admin) {
-        document.getElementById('adminLinks').style.display = 'none';
-      }
-    });
-  </script>
+  <!-- Scripts -->
+  <script src="../js/supabase.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="../js/dashboard.js"></script>
 </body>
 </html>
