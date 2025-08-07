@@ -957,3 +957,82 @@ body.dark-mode.loading::after {
   50% { opacity: 1; transform: scale(1.05); }
   100% { opacity: 0.8; transform: scale(1); }
 }
+
+/* Loading State */
+body.loading {
+  pointer-events: none;
+}
+
+body.loading::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.7);
+  z-index: 9998;
+}
+
+body.loading::before {
+  content: 'Carregando...';
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  background: var(--primary);
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  animation: pulse 1.5s infinite;
+}
+
+/* User Area */
+.user-area {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50px;
+}
+
+.user-info i.admin {
+  color: var(--success);
+  animation: pulse 2s infinite;
+}
+
+/* Admin Section */
+.admin-section {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+}
+
+/* Error Modal */
+.swal-debug-btn {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.swal-debug-btn:hover {
+  text-decoration: underline;
+}
+
+/* Animations */
+@keyframes pulse {
+  0% { opacity: 0.8; }
+  50% { opacity: 1; }
+  100% { opacity: 0.8; }
+}

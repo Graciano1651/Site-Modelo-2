@@ -15,8 +15,7 @@
         <span>Dashboard de Férias</span>
       </div>
       
-      <!-- Área do Usuário -->
-      <div class="user-area">
+     <div class="user-area">
         <div class="user-info">
           <span id="username"></span>
           <i class="fas fa-user-circle"></i>
@@ -28,12 +27,18 @@
     </div>
 
     <div class="content">
-      <!-- Cards Estatísticos -->
-      <div class="stats-grid">
-        <!-- Cards permanecem iguais -->
+    <div class="stats-grid">
+        <div class="stat-card" onclick="window.location.href='list-todos.html'">
+          <div class="stat-icon"><i class="fas fa-users"></i></div>
+          <div class="stat-info">
+            <h3>Total de Funcionários</h3>
+            <p id="totalEmployees">0</p>
+          </div>
+        </div>
+        
+        <!-- Outros cards (Em Férias, Disponíveis, Conflitos) -->
       </div>
       
-      <!-- Seção Admin -->
       <div id="adminSection" class="admin-section">
         <h2><i class="fas fa-cog"></i> Administração</h2>
         <div class="admin-links">
@@ -45,10 +50,10 @@
     </div>
   </div>
 
-  <!-- Scripts -->
+  <!-- Scripts (ORDEM IMPORTANTE!) -->
   <script src="../js/supabase.js"></script>
   <script src="../js/utils.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="../js/dashboard.js"></script>
 </body>
-</html>
+ </html>
